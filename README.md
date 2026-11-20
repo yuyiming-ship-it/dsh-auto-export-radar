@@ -1,11 +1,11 @@
 # 中国汽车出海雷达 · DSH 插件
 
-> 左侧栏常驻的出海信息台：15 个语种、74 个渠道定时采集中国汽车出海新闻，标题自动翻成中文，点开条目就能在面板里读正文并一键译成中文。
+> 左侧栏常驻的出海信息台：15 个语种、82 个渠道定时采集中国汽车出海新闻，标题自动翻成中文，点开条目就能在面板里读正文并一键译成中文。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1%2B-4B6CF7)](https://github.com/deepseek-ai/deepseek-harness)
 ![languages](https://img.shields.io/badge/languages-15-2E9E6B)
-![channels](https://img.shields.io/badge/channels-74-C2410C)
+![channels](https://img.shields.io/badge/channels-82-C2410C)
 
 **为什么需要它**：中国车出海的消息散在阿语、俄语、波斯语、法语的本地媒体里——中东经销商签约、伊朗市场传闻、哈萨克斯坦建厂、摩洛哥组装线，中文搜索基本搜不到，等行业媒体转载已经晚了两周。通用 RSS 阅读器又不会按「出海」过滤、不会把阿语标题翻成中文、也不知道哪个渠道挂了。
 
@@ -35,7 +35,7 @@
 | 能力 | 说明 |
 |---|---|
 | 左侧栏面板 | 和「插件」「媒体工作台」并列的常驻入口，四页：实时流 / 收藏 / 渠道 / 设置 |
-| 多语种采集 | 15 语种、26 个 Google News 本地版 + 48 个行业 RSS，共 74 个渠道 |
+| 多语种采集 | 15 语种、26 个 Google News 本地版 + 56 个行业 RSS，共 82 个渠道（波斯语 18 个源） |
 | 中文标题 | 每个标题自动翻成简体中文；已是中文的原样保留；翻不出的标「待翻译」不阻塞 |
 | 面板内读正文 | 点条目右侧开阅读器，正文分段落阅读，缓存 14 天，第二次打开是瞬时的 |
 | 正文翻译 | 外文正文点一次「译成中文」，按段翻译（8 段一批），译文与正文一起缓存 |
@@ -146,7 +146,7 @@ cd dsh-auto-export-radar && npm pack
 |---|---|---|---|
 | **阿语** | 沙特、阿联酋、埃及、摩洛哥、科威特 | ArabGT、Assayyarat、Almuraba、Cairo24 汽车、Sky News عربية、الجزيرة اقتصاد、CNN عربية | 12 |
 | **俄语** | 俄罗斯、哈萨克斯坦、乌兹别克斯坦、白俄罗斯 | Kolesa、5 колесо、Ведомости·авто、Lenta、NaAvtotrasse、Zamin.uz | 10 |
-| **波斯语** | 伊朗 | Pedal、Zoomit、Digiato、دنیای اقتصاد、ایسنا、عصر خودرو、اقتصاد آنلاین、خبرآنلاین、همشهری、مهر | 11 |
+| **波斯语** | 伊朗 | Pedal、Zoomit、Digiato、دنیای اقتصاد、ایسنا、عصر خودرو、اقتصاد آنلاین、خبرآنلاین、همشهری、مهر、ایرنا、ایلنا、عصر ایران、تابناک、مشرق、تجارت نیوز、گجت نیوز、تک رسا | 19 |
 | **法语** | 法国、摩洛哥、科特迪瓦 | Automobile Propre、Le Blog Auto、Auto Plus、Auto Moto、Journal Auto、Motors Actu、FrAndroid | 10 |
 | 中文 | 中国 | — | 1 |
 | 英文 | Global | CarNewsChina、CnEVPost、Automotive World、electric-vehicles.com、InsideEVs、Electrek、Electrive、Nikkei Asia、Paultan、Arab News | 11 |
@@ -156,7 +156,7 @@ cd dsh-auto-export-radar && npm pack
 
 两个和供给有关的提醒：
 
-- **波斯语**：Google News 的波斯语索引很弱（实测一次只回个位数条目），伊朗本地 RSS 才是主力；伊朗媒体关于中国车的日更量本身不大，一天 5–15 条属正常。
+- **波斯语**：Google News 的波斯语索引很弱（实测一次只回个位数条目），伊朗本地 RSS 才是主力，所以给了 18 个源（汽车垂类 2 个 + 科技 3 个 + 财经 2 个 + 通讯社 11 个）；伊朗媒体关于中国车的日更量本身不大，一天 10–30 条属正常。
 - **俄语**：重点不止俄罗斯——哈萨克斯坦、乌兹别克斯坦、白俄罗斯的本地报道经常比俄本土更早披露建厂与 KD 项目，所以这四个市场分开跑。
 
 ## 社交源（X / Facebook / Threads）
@@ -227,7 +227,7 @@ skill `china-auto-overseas-radar` 提供：渠道分层清单、七类主题的�
 - 观测到永久不可用、因此没有纳入的源：Autostat.ru（403）、Drive.ru（DDoS-Guard）、Motor.ru（鉴权）、Autonews.ru（404）、Auto Infos（403）、Caradisiac（410 关站）、Al Arabiya（网络拒绝）、Asharq Al-Awsat（连接失败）、Khodrobank（RSS 下线，改接 Pedal）。
 - 机翻的品牌与车型译名以原文为准，引用前对照原文标题。
 - 社交三平台必须自建桥或令牌才有内容；没配置时不该把「社交没动静」理解成「没有相关讨论」。
-- 每轮约 74 个 HTTP 请求，默认 20 分钟一次；嫌吵就把间隔调大或只在需要时手动刷新。
+- 每轮约 82 个 HTTP 请求，默认 20 分钟一次；嫌吵就把间隔调大或只在需要时手动刷新。
 
 ## 目录结构
 

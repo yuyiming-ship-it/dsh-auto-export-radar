@@ -110,6 +110,14 @@ export const FEEDS = [
   { name: 'خبرآنلاین', url: 'https://www.khabaronline.ir/rss', lang: 'fa', region: '伊朗' },
   { name: 'همشهری', url: 'https://www.hamshahrionline.ir/rss', lang: 'fa', region: '伊朗' },
   { name: 'مهر', url: 'https://www.mehrnews.com/rss', lang: 'fa', region: '伊朗' },
+  { name: 'ایرنا', url: 'https://www.irna.ir/rss', lang: 'fa', region: '伊朗' },
+  { name: 'ایلنا', url: 'https://www.ilna.ir/rss', lang: 'fa', region: '伊朗' },
+  { name: 'عصر ایران', url: 'https://www.asriran.com/fa/rss/allnews', lang: 'fa', region: '伊朗' },
+  { name: 'تابناک', url: 'https://www.tabnak.ir/fa/rss/allnews', lang: 'fa', region: '伊朗' },
+  { name: 'مشرق', url: 'https://www.mashreghnews.ir/rss', lang: 'fa', region: '伊朗' },
+  { name: 'تجارت نیوز', url: 'https://tejaratnews.com/feed', lang: 'fa', region: '伊朗' },
+  { name: 'گجت نیوز', url: 'https://gadgetnews.ir/feed', lang: 'fa', region: '伊朗' },
+  { name: 'تک رسا', url: 'https://techrasa.com/feed/', lang: 'fa', region: '伊朗' },
   // 法语：电动车垂直 + 门户 + 行业 B2B + 北非/西非
   { name: 'Automobile Propre', url: 'https://www.automobile-propre.com/feed/', lang: 'fr', region: '法国' },
   { name: 'Le Blog Auto', url: 'https://www.leblogauto.com/feed/', lang: 'fr', region: '法国' },
@@ -143,7 +151,7 @@ export const BRAND_TERMS = [
   'جايكو', 'چيري', 'شانجان', 'جي إم سي',
   // 波斯语
   'بی وای دی', 'چری', 'شری', 'جیلی', 'ام جی', 'هاوال', 'جیتور', 'اومودا', 'جایکو', 'چانگان', 'دانگ فنگ',
-  'تیگو', 'فونیکس', 'لایو', 'امویام', 'هایما', 'کیامسی', 'ریوس',
+  'تیگو', 'فونیکس', 'لایو', 'امویام', 'هایما', 'کیامسی', 'ریوس', 'جک', 'بسترن', 'فردا موتورز',
   // 俄语
   'черри', 'чери', 'джили', 'хавал', 'чанъань', 'бид', 'джетур', 'омода', 'джайку', 'эксид', 'чанган',
 ];
@@ -173,7 +181,7 @@ const TOPIC_TERMS = {
   id: ['ekspor', 'pabrik', 'perakitan', 'tarif', 'penjualan', 'pasar', 'impor'],
   tr: ['ihracat', 'fabrika', 'montaj', 'gümrük', 'satış', 'pazar', 'ithalat'],
   fr: ['exportation', 'usine', 'assemblage', 'droits de douane', 'tarif', 'ventes', 'marché', 'concessionnaire', 'importation', 'localisation', 'homologation', 'livraisons'],
-  fa: ['صادرات', 'واردات', 'کارخانه', 'مونتاژ', 'تعرفه', 'گمرک', 'فروش', 'بازار', 'نمایندگی', 'قیمت', 'عرضه', 'تولید'],
+  fa: ['صادرات', 'واردات', 'کارخانه', 'مونتاژ', 'تعرفه', 'گمرک', 'فروش', 'بازار', 'نمایندگی', 'قیمت', 'عرضه', 'تولید', 'ثبت سفارش', 'ترخیص', 'برقی', 'هیبرید', 'قیمت‌گذاری'],
   ja: ['輸出', '工場', '現地生産', '組立', '関税', '販売', '市場', 'ディーラー', '認証', '輸入', '出荷'],
   ko: ['수출', '공장', '현지생산', '조립', '관세', '판매', '시장', '딜러', '인증', '수입', '출하'],
   de: ['export', 'werk', 'montage', 'zoll', 'verkauf', 'markt', 'händler', 'zulassung', 'import', 'auslieferung'],

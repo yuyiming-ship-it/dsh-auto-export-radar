@@ -25,9 +25,9 @@ auto_export_radar({ langs: ['ja','ko'], query: '中国車 輸出' })
 
 ## 2. 渠道分层（工具已覆盖的 + 必须手工补的）
 
-**工具内已接**：15 个语种 / 26 个 Google News 本地版（中文、英/全球、日、韩、德、阿语 5 个市场：沙特/阿联酋/埃及/摩洛哥/科威特、波斯语、法语 3 个：法国/摩洛哥/科特迪瓦、俄语 4 个：俄罗斯/哈萨克斯坦/乌兹别克斯坦/白俄罗斯、西语 3 个：墨西哥/西班牙/智利、葡语、泰语、越南语、印尼语、土耳其语）+ 48 个 RSS（英文垂类 CarNewsChina/CnEVPost/Electrek/InsideEVs/Electrive/Nikkei/Paultan；阿语 ArabGT/Assayyarat/Almuraba/Cairo24/Sky News عربية/الجزيرة/CNN عربية；俄语 Kolesa/5 колесо/Ведомости·авто/Lenta/NaAvtotrasse/Zamin.uz；波斯语 Pedal/Zoomit/Digiato/دنیای اقتصاد/ایسنا/عصر خودرو/اقتصاد آنلاین/خبرآنلاین/همشهری/مهر；法语 Automobile Propre/Le Blog Auto/Auto Plus/Auto Moto/Journal Auto/Motors Actu/FrAndroid；另有 Motor.es、Quatro Rodas、Headlight Mag、Autonetmagz、Detik、VnExpress、Thanh Nien、Yonhap、Arab News）。
+**工具内已接**：15 个语种 / 26 个 Google News 本地版（中文、英/全球、日、韩、德、阿语 5 个市场：沙特/阿联酋/埃及/摩洛哥/科威特、波斯语、法语 3 个：法国/摩洛哥/科特迪瓦、俄语 4 个：俄罗斯/哈萨克斯坦/乌兹别克斯坦/白俄罗斯、西语 3 个：墨西哥/西班牙/智利、葡语、泰语、越南语、印尼语、土耳其语）+ 56 个 RSS（英文垂类 CarNewsChina/CnEVPost/Electrek/InsideEVs/Electrive/Nikkei/Paultan；阿语 ArabGT/Assayyarat/Almuraba/Cairo24/Sky News عربية/الجزيرة/CNN عربية；俄语 Kolesa/5 колесо/Ведомости·авто/Lenta/NaAvtotrasse/Zamin.uz；波斯语 Pedal/Zoomit/Digiato/دنیای اقتصاد/ایسنا/عصر خودرو/اقتصاد آنلاین/خبرآنلاین/همشهری/مهر/ایرنا/ایلنا/عصر ایران/تابناک/مشرق/تجارت نیوز/گجت نیوز/تک رسا；法语 Automobile Propre/Le Blog Auto/Auto Plus/Auto Moto/Journal Auto/Motors Actu/FrAndroid；另有 Motor.es、Quatro Rodas、Headlight Mag、Autonetmagz、Detik、VnExpress、Thanh Nien、Yonhap、Arab News）。
 
-波斯语提醒：Google News 的波斯语索引很弱，伊朗本地 RSS 才是主力；伊朗媒体关于中国车的日更量本身不大（5–15 条属正常）。俄语要看的不止俄罗斯——哈萨克斯坦/乌兹别克斯坦/白俄罗斯的本地报道往往比俄本土更早披露建厂与 KD 项目。
+波斯语提醒：Google News 的波斯语索引很弱，伊朗本地 RSS 才是主力；伊朗媒体关于中国车的日更量本身不大（10–30 条属正常）。俄语要看的不止俄罗斯——哈萨克斯坦/乌兹别克斯坦/白俄罗斯的本地报道往往比俄本土更早披露建厂与 KD 项目。
 
 **工具外需要手工补的口径**（`web_search` 或 `web_fetch` 直取）：
 
