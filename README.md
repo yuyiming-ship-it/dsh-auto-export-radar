@@ -92,12 +92,19 @@ dsh plugin --profile desktop add "$PWD/dsh-auto-export-radar"
 
 然后重启该 profile；如果插件页没有自动启用，手动打开开关。
 
-### 方式三：打包成 tarball 分发
+### 方式三：直接装打包文件
+
+从 [Releases](https://github.com/yuyiming-ship-it/dsh-auto-export-radar/releases) 下载 `dsh-auto-export-radar-1.5.0.tgz`，然后：
 
 ```bash
-cd dsh-auto-export-radar
-npm pack            # 得到 dsh-auto-export-radar-1.5.0.tgz
 dsh plugin --profile desktop add "$PWD/dsh-auto-export-radar-1.5.0.tgz"
+# 或者在 DSH「添加插件」里填这个 tgz 的绝对路径
+```
+
+也可以自己打包：
+
+```bash
+cd dsh-auto-export-radar && npm pack
 ```
 
 ### 安装后第一次打开
