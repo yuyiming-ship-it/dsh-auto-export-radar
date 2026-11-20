@@ -1,0 +1,6 @@
+# 中国汽车出海雷达：左侧栏面板 + 采集工具（auto_export_radar）+ 简报 skill。
+# 面板数据由本插件的 /auto-export-radar/* 路由提供，后台默认每 20 分钟刷一轮。
+- insert:
+    - id: auto-export-radar
+      name: 'dsh-auto-export-radar'
+      config: {}

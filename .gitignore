@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+dist/
+*.tgz
+
+# DSH 运行时数据（状态、正文缓存）不该进仓库
+state.json
+articles.json
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
