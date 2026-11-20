@@ -170,21 +170,26 @@ export const AUTO_TERMS = [
 
 /** 家电/数码词：小米洗衣机、充电宝、扫地机器人这类不是汽车新闻，别让它混进来。 */
 const NON_AUTO_TERMS =
-  /(لباسشویی|یخچال|فریزر|تلویزیون|جارو|جاروبرقی|مایکروویو|ظرفشویی|اجاق|کولر|گوشی|موبایل|لپ‌?تاپ|تبلت|هدفون|ساعت هوشمند|چایساز|اسپرسوساز|پنکه|رطوبت‌گیر|washing machine|refrigerator|fridge|television|\btv\b|vacuum|microwave|dishwasher|air conditioner|smartphone|\bphone\b|laptop|tablet|headphone|smartwatch|洗衣机|冰箱|电视|吸尘器|微波炉|洗碗机|空调|手机|平板|笔记本|耳机|手表|стиральн|холодильник|телевизор|пылесос|микроволнов|посудомоечн|кондиционер|смартфон|ноутбук|наушник|lavadora|nevera|televisor|aspiradora|microondas|celular|\bportátil\b|auricular|aire acondicionado|máquina de lavar|geladeira|televisão|aspirador|micro-ondas|fone de ouvido|lavatrice|réfrigérateur|télévision|aspirateur|micro-ondes|ordinateur portable|casque|climatiseur)/i
+  /(لباس\s*شویی|یخچال|فریزر|تلویزیون|جارو\s*برقی|جارو|مایکروویو|ظرف\s*شویی|اجاق|کولر|گوشی|موبایل|لپ\s*?تاپ|تبلت|هدفون|ساعت\s*هوشمند|چای\s*ساز|اسپرسو\s*ساز|پنکه|رطوبت\s*گیر|washing machine|refrigerator|fridge|television|\btv\b|vacuum|microwave|dishwasher|air conditioner|smartphone|\bphone\b|laptop|tablet|headphone|smartwatch|洗衣机|冰箱|电视|吸尘器|微波炉|洗碗机|空调|手机|平板|笔记本|耳机|手表|стиральн|холодильник|телевизор|пылесос|микроволнов|посудомоечн|кондиционер|смартфон|ноутбук|наушник|lavadora|nevera|televisor|aspiradora|microondas|celular|\bportátil\b|auricular|aire acondicionado|máquina de lavar|geladeira|televisão|aspirador|micro-ondas|fone de ouvido|lavatrice|réfrigérateur|télévision|aspirateur|micro-ondes|ordinateur portable|casque|climatiseur)/i
 
 /** 明确指车的词：只有它们才能把「洗衣机 + 汽车」这种混着写的稿子拉回来。 */
 const STRONG_VEHICLE =
   /(خودرو|خودروساز|اتومبیل|automobile|voiture|véhicule|coche|carro|automóvil|vehículo|автомобил|汽车|车型|整车|新车|乘用车|电动车|\bvehicle|\bcars?\b|\bsuv\b|\bev\b|\btruck\b|\bsedan\b|\bmpv\b|\bpickup\b|\bcrossover\b)/i
 
+/** 波斯语等语言的 ZWNJ（U+200C）会藏在词中间，比对前先换成空格。 */
+function normalizeScript(text) {
+  return String(text || '').toLowerCase().replace(/[\u200c\u200d\u200e\u200f]/g, ' ');
+}
+
 /** 单条文本是否算机动车话题：家电/数码词命中且没有明确的车词时，判否。 */
 export function looksLikeVehicleTopic(text) {
-  const haystack = String(text || '').toLowerCase();
+  const haystack = normalizeScript(text);
   return hasAutoWord(haystack) && !(NON_AUTO_TERMS.test(haystack) && !STRONG_VEHICLE.test(haystack));
 }
 
 /** 只判断"家电/数码误判"这一类：命中家电词又没有明确车词。清池子时用它，避免误删缺车词的历史条目。 */
 export function looksLikeAppliance(text) {
-  const haystack = String(text || '').toLowerCase();
+  const haystack = normalizeScript(text);
   return NON_AUTO_TERMS.test(haystack) && !STRONG_VEHICLE.test(haystack);
 }
 
@@ -491,6 +496,7 @@ export async function collect(options = {}) {
 
   for (const item of raw.flat()) {
     const haystack = `${item.title} ${item.snippet || ''}`.toLowerCase();
+    const normalizedHaystack = normalizeScript(haystack);
     const brandHits = countMatches(haystack, BRAND_TERMS);
     const topicHits = countMatches(haystack, topicTermsFor(item.lang));
     const isChinaSignal = /china|chinese|中国|중국|китай|chino|chinês|الصين|چین|چینی|จีน|trung quốc|cina|çin/i.test(haystack);
@@ -500,7 +506,7 @@ export async function collect(options = {}) {
     // ② 有「中国」信号 + 出海主题词（关税、建厂、出口、销量…）。
     // 这样既能收到「奇瑞在约旦组装」这类一手报道，也不会把芯片管制、能源存储混进来。
     // 家电/数码词命中、又没有明确的车词时，判定为不是汽车话题（小米洗衣机就是这么混进来的）。
-    const autoHit = hasAutoWord(haystack) && !(NON_AUTO_TERMS.test(haystack) && !STRONG_VEHICLE.test(haystack));
+    const autoHit = hasAutoWord(normalizedHaystack) && !(NON_AUTO_TERMS.test(normalizedHaystack) && !STRONG_VEHICLE.test(normalizedHaystack));
     const keep = autoHit && (brandHits > 0 || (isChinaSignal && topicHits > 0));
     if (!keep) continue;
 
