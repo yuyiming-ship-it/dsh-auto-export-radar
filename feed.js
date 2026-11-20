@@ -6,7 +6,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { extractArticle } from './article.js'
-import { collect, EDITIONS, FEEDS, LOCALES } from './radar.js'
+import { collect, EDITIONS, FEEDS, LOCALES, looksLikeAppliance } from './radar.js'
 import {
   PLATFORMS,
   SOCIAL_TEMPLATE,
@@ -545,7 +545,10 @@ export class RadarFeed {
     const items = [...byKey.values()]
       .filter((item) => {
         const stamp = Date.parse(item.publishedAt || item.addedAt)
-        return Number.isFinite(stamp) ? now - stamp < POOL_TTL_MS : true
+        if (Number.isFinite(stamp) && now - stamp >= POOL_TTL_MS) return false
+        // 旧规则存进来的家电/数码误判（小米洗衣机之类）在下一轮合并时清出池子。
+        if (item.via !== 'social' && looksLikeAppliance(`${item.title} ${item.snippet || ''}`)) return false
+        return true
       })
       .sort((a, b) => Date.parse(b.publishedAt || b.addedAt) - Date.parse(a.publishedAt || a.addedAt))
       .slice(0, POOL_MAX)

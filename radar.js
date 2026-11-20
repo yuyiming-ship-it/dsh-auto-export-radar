@@ -151,14 +151,14 @@ export const BRAND_TERMS = [
   'جايكو', 'چيري', 'شانجان', 'جي إم سي',
   // 波斯语
   'بی وای دی', 'چری', 'شری', 'جیلی', 'ام جی', 'هاوال', 'جیتور', 'اومودا', 'جایکو', 'چانگان', 'دانگ فنگ',
-  'تیگو', 'فونیکس', 'لایو', 'امویام', 'هایما', 'کیامسی', 'ریوس', 'جک', 'بسترن', 'فردا موتورز',
+  'تیگو', 'فونیکس', 'لایو', 'امویام', 'هایما', 'کیامسی', 'ریوس', 'جک', 'بسترن', 'فردا موتورز', 'شیائومی', 'سو۷', 'یو۷',
   // 俄语
   'черри', 'чери', 'джили', 'хавал', 'чанъань', 'бид', 'джетур', 'омода', 'джайку', 'эксид', 'чанган',
 ];
 
 /** 机动车语境词：标题和摘要里没有任何“车”的条目（芯片管制、能源存储、别国出口统计）不算这个雷达的内容。 */
 export const AUTO_TERMS = [
-  'car', 'cars', 'auto', 'autos', 'automotive', 'automaker', 'vehicle', 'vehicles', 'suv', 'pickup', 'truck',
+  'car', 'cars', 'auto', 'autos', 'automotive', 'automaker', 'automakers', 'carmaker', 'carmakers', 'vehicle', 'vehicles', 'suv', 'pickup', 'truck',
   'ev', 'evs', 'bev', 'phev', 'suv', 'suvs', 'sedan', 'sedans', 'mpv', 'crossover',
   '汽车', '车企', '乘用车', '商用车', '新能源车', '电动车', '整车', '车型', '轿车',
   '自動車', '車', '자동차', '자동차', 'auto', 'fahrzeug', 'voiture', 'automobile', 'véhicule',
@@ -167,6 +167,26 @@ export const AUTO_TERMS = [
   'خودرو', 'ماشین', 'خودروساز', 'مركبة', 'سيارات كهربائية',
   'verkauf', 'händler',
 ];
+
+/** 家电/数码词：小米洗衣机、充电宝、扫地机器人这类不是汽车新闻，别让它混进来。 */
+const NON_AUTO_TERMS =
+  /(لباسشویی|یخچال|فریزر|تلویزیون|جارو|جاروبرقی|مایکروویو|ظرفشویی|اجاق|کولر|گوشی|موبایل|لپ‌?تاپ|تبلت|هدفون|ساعت هوشمند|چایساز|اسپرسوساز|پنکه|رطوبت‌گیر|washing machine|refrigerator|fridge|television|\btv\b|vacuum|microwave|dishwasher|air conditioner|smartphone|\bphone\b|laptop|tablet|headphone|smartwatch|洗衣机|冰箱|电视|吸尘器|微波炉|洗碗机|空调|手机|平板|笔记本|耳机|手表|стиральн|холодильник|телевизор|пылесос|микроволнов|посудомоечн|кондиционер|смартфон|ноутбук|наушник|lavadora|nevera|televisor|aspiradora|microondas|celular|\bportátil\b|auricular|aire acondicionado|máquina de lavar|geladeira|televisão|aspirador|micro-ondas|fone de ouvido|lavatrice|réfrigérateur|télévision|aspirateur|micro-ondes|ordinateur portable|casque|climatiseur)/i
+
+/** 明确指车的词：只有它们才能把「洗衣机 + 汽车」这种混着写的稿子拉回来。 */
+const STRONG_VEHICLE =
+  /(خودرو|خودروساز|اتومبیل|automobile|voiture|véhicule|coche|carro|automóvil|vehículo|автомобил|汽车|车型|整车|新车|乘用车|电动车|\bvehicle|\bcars?\b|\bsuv\b|\bev\b|\btruck\b|\bsedan\b|\bmpv\b|\bpickup\b|\bcrossover\b)/i
+
+/** 单条文本是否算机动车话题：家电/数码词命中且没有明确的车词时，判否。 */
+export function looksLikeVehicleTopic(text) {
+  const haystack = String(text || '').toLowerCase();
+  return hasAutoWord(haystack) && !(NON_AUTO_TERMS.test(haystack) && !STRONG_VEHICLE.test(haystack));
+}
+
+/** 只判断"家电/数码误判"这一类：命中家电词又没有明确车词。清池子时用它，避免误删缺车词的历史条目。 */
+export function looksLikeAppliance(text) {
+  const haystack = String(text || '').toLowerCase();
+  return NON_AUTO_TERMS.test(haystack) && !STRONG_VEHICLE.test(haystack);
+}
 
 /** 出海主题词（分语种），用于判定“这条属于出海叙事”并打主题标签。 */
 const TOPIC_TERMS = {
@@ -479,7 +499,8 @@ export async function collect(options = {}) {
     // ① 标题/摘要里出现中国品牌（品牌新闻本身就是有效信号）；
     // ② 有「中国」信号 + 出海主题词（关税、建厂、出口、销量…）。
     // 这样既能收到「奇瑞在约旦组装」这类一手报道，也不会把芯片管制、能源存储混进来。
-    const autoHit = hasAutoWord(haystack);
+    // 家电/数码词命中、又没有明确的车词时，判定为不是汽车话题（小米洗衣机就是这么混进来的）。
+    const autoHit = hasAutoWord(haystack) && !(NON_AUTO_TERMS.test(haystack) && !STRONG_VEHICLE.test(haystack));
     const keep = autoHit && (brandHits > 0 || (isChinaSignal && topicHits > 0));
     if (!keep) continue;
 
