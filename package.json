@@ -1,6 +1,6 @@
 {
   "name": "dsh-auto-export-radar",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "private": true,
   "description": "中国汽车出海雷达 · DSH 插件：左侧栏常驻面板，15 个语种 / 26 个 Google News 本地版 + 56 个 RSS（波斯语 18 个源）+ 14 个官方信源（部委/海关/公报），标题自动翻成中文，面板内读正文并可一键译成中文，支持已读/收藏/关注词/自定义订阅/OPML，可选接入 X / Facebook / Threads。",
   "type": "module",
