@@ -280,6 +280,13 @@ export default {
                 return json(res, 200, { ok: true, ...result })
               }
 
+              if (path === `${ROUTE}/official/watch` && method === 'POST') {
+                const body = await readJson(req)
+                const result = await feed.saveWatch(body.id, body.enabled)
+                void feed.refresh('official-watch-changed')
+                return json(res, 200, { ok: true, ...result, refreshing: true })
+              }
+
               if (path === `${ROUTE}/official` && method === 'POST') {
                 const body = await readJson(req)
                 const result = await feed.saveOfficialSources(Array.isArray(body.sources) ? body.sources : [])

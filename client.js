@@ -63,6 +63,9 @@ window.__ModuleLoader__.load({
       officialUrlPlaceholder: '公告列表页地址',
       officialFilterPlaceholder: '关键词正则（可空）',
       officialBadge: '官方',
+      watchOn: '监控中',
+      watchOff: '已暂停',
+      watchNote: '增量：只收新法令',
       officialRefsTitle: '进口规则入口（{n} 个）',
       officialRefsHint: '各国海关、法规、公报和申报页。它们没有 RSS，也没有可抓的公告列表，所以只做一键入口，不进信息流；想盯某一页的更新，把它填进上面的「添加官方页面」。',
       socialSources: '社交源（X / Facebook / Threads）',
@@ -172,6 +175,9 @@ window.__ModuleLoader__.load({
       officialUrlPlaceholder: 'Listing page URL',
       officialFilterPlaceholder: 'Keyword regex (optional)',
       officialBadge: 'Official',
+      watchOn: 'Watching',
+      watchOff: 'Paused',
+      watchNote: 'Incremental: new acts only',
       officialRefsTitle: 'Import rule bookmarks ({n})',
       officialRefsHint: 'Customs, legislation, gazettes and declaration portals. They have no RSS feed, so they are one-click bookmarks rather than a stream; to watch one for updates, add it under “Add an official page”.',
       socialSources: 'Social sources (X / Facebook / Threads)',
@@ -522,6 +528,15 @@ window.__ModuleLoader__.load({
         return body
       }, [])
 
+      const saveWatch = React.useCallback(async (id, enabled) => {
+        const res = await fetch(API('/official/watch'), {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id, enabled }),
+        })
+        return readJsonResponse(res)
+      }, [])
+
       const saveSocialSettings = React.useCallback(async (patch) => {
         const res = await fetch(API('/social/settings'), {
           method: 'POST', credentials: 'same-origin',
@@ -540,7 +555,7 @@ window.__ModuleLoader__.load({
       return {
         data, setData, error, auto, setAuto, refreshNow, manualBusy, load,
         markRead, markAllRead, markAllUnread, toggleFavorite, saveSettings, saveFeeds,
-        saveSocial, saveSocialSettings, saveOfficial,
+        saveSocial, saveSocialSettings, saveOfficial, saveWatch,
       }
     }
 
@@ -796,7 +811,7 @@ window.__ModuleLoader__.load({
           el('p', { className: 'aer-note' }, t('onlyTitles'))))
     }
 
-    function ChannelsView({ t, data, onSaveFeeds, onSaveSocial, onSaveOfficial, onImport, importing, message }) {
+    function ChannelsView({ t, data, onSaveFeeds, onSaveSocial, onSaveOfficial, onSaveWatch, onImport, importing, message }) {
       const news = data?.channels?.news || []
       const social = data?.social || {}
       const socialChannels = social.channels || []
@@ -918,11 +933,23 @@ window.__ModuleLoader__.load({
             el('span', { className: 'aer-lang platform-official' }, LANGS[source.lang] || String(source.lang || '').toUpperCase()),
             el('strong', null, source.name),
             el('span', { className: 'aer-muted' }, source.region || ''),
-            source.status?.ok === false
-              ? el('span', { className: 'aer-state is-bad' }, source.status.error || '×')
-              : source.status?.items
-                ? el('span', { className: 'aer-state is-good' }, fill(t('officialCount'), { n: source.status.items }))
-                : el('span', { className: 'aer-state' }, t('officialEmpty')),
+            source.watch
+              ? el('button', {
+                type: 'button',
+                className: `aer-toggle${source.enabled ? ' is-on' : ''}`,
+                'aria-pressed': Boolean(source.enabled),
+                onClick: () => onSaveWatch(source.id, !source.enabled),
+              }, source.enabled ? t('watchOn') : t('watchOff'))
+              : null,
+            source.status?.paused
+              ? el('span', { className: 'aer-state is-warn' }, source.status.note || t('watchOff'))
+              : source.status?.ok === false
+                ? el('span', { className: 'aer-state is-bad' }, source.status.error || '×')
+                : source.watch
+                  ? el('span', { className: source.status?.items ? 'aer-state is-good' : 'aer-state' }, source.status?.note || t('watchNote'))
+                  : source.status?.items
+                    ? el('span', { className: 'aer-state is-good' }, fill(t('officialCount'), { n: source.status.items }))
+                    : el('span', { className: 'aer-state' }, t('officialEmpty')),
             source.custom
               ? el(IconButton, {
                 name: 'trash', label: t('remove'), className: 'is-quiet',
@@ -1301,7 +1328,7 @@ window.__ModuleLoader__.load({
 
       const body = tab === 'channels'
         ? el('div', { className: 'aer-main' }, el(ChannelsView, {
-          t, data, onSaveFeeds: radar.saveFeeds, onSaveSocial: radar.saveSocial, onSaveOfficial: radar.saveOfficial,
+          t, data, onSaveFeeds: radar.saveFeeds, onSaveSocial: radar.saveSocial, onSaveOfficial: radar.saveOfficial, onSaveWatch: radar.saveWatch,
           onImport: importOpml, importing,
           message: feedMessage,
         }))
@@ -1637,6 +1664,8 @@ window.__ModuleLoader__.load({
 .aer-channel-list li:last-child { border-bottom: 0; }
 .aer-channel-list strong { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aer-muted { color: var(--ink-3); font-size: 11px; }
+.aer-toggle { flex: none; height: 20px; padding: 0 7px; border: 1px solid var(--line); background: var(--paper); font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .06em; color: var(--ink-3); }
+.aer-toggle.is-on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .aer-state { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); white-space: nowrap; }
 .aer-state.is-good { color: var(--ok); }
 .aer-state.is-bad { color: var(--bad); max-width: 120px; overflow: hidden; text-overflow: ellipsis; }

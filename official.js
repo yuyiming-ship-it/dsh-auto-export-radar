@@ -14,7 +14,8 @@ const MAX_ITEMS = 24
 /** 导航/静态页链接：FAQ、表单、关于我们这类不是公告，按 URL 和标题一起排掉。 */
 const SKIP_LINK = /(\/faq|\/about|\/contact|\/privacy|\/terms|\/cookie|\/login|\/search|\/sitemap|\/glossary|\/subscribe|\/newsletter|\/forms?\/|\/download|\/tender|\/procurement|\/careers?|\/jobs?|\/accessibility|\/archive|faq\b|about us|contact us|privacy|terms of|glossary|cookie|sitemap|subscribe|newsletter|application forms?|tender|estimez|simulateur|calculateur|calculator|estimate your|simulator|duty calculator)/i
 const MIN_TITLE = 14
-const MAX_TITLE = 220
+const MAX_TITLE = 400
+const DISPLAY_TITLE = 180
 
 /** 官方信源清单：只放实测能打开、且关键词能筛出条目的站点。 */
 export const OFFICIAL_SOURCES = [
@@ -182,6 +183,47 @@ export const OFFICIAL_REFS = [
   { id: 'ec-aduana', name: '厄瓜多尔海关 · 进口指引', region: '厄瓜多尔', kind: '清关', url: 'https://www.aduana.gob.ec/servicio-al-ciudadano/para-importar/' },
 ]
 
+/**
+ * 增量监控源：公报站每天出新的法律文本，按「列表页 → 新链接」做增量。
+ * 首次抓取只收 baseline 条（倒序最新），其余先记为已见，避免一上来刷屏。
+ */
+export const WATCH_SOURCES = [
+  {
+    id: 'ru-gov-acts',
+    name: '俄罗斯政府法令',
+    url: 'http://publication.pravo.gov.ru/documents/block/government',
+    lang: 'ru',
+    region: '俄罗斯',
+    filter: 'авто|автомоб|транспорт|таможен|пошлин|утильсбор|ввоз',
+    watch: true,
+    baseline: 6,
+    note: '该站 https 不可达，走 http；新增法令按标题关键词筛',
+  },
+  {
+    id: 'ru-fts-acts',
+    name: '俄罗斯部门法令（含海关）',
+    url: 'http://publication.pravo.gov.ru/documents/block/federal_authorities',
+    lang: 'ru',
+    region: '俄罗斯',
+    filter: 'авто|автомоб|транспорт|таможен|пошлин|утильсбор|ввоз',
+    watch: true,
+    baseline: 6,
+    note: '海关署、工贸部等部门的命令与细则',
+  },
+  {
+    id: 'ir-rrk',
+    name: '伊朗官方公报',
+    url: 'https://www.rrk.ir/',
+    lang: 'fa',
+    region: '伊朗',
+    filter: 'خودرو|واردات|صادرات|تعرفه|گمرک|آیین',
+    watch: true,
+    baseline: 6,
+    enabledByDefault: false,
+    note: '本机网络连不上 rrk.ir（TCP 超时），到能访问伊朗站点的网络再启用',
+  },
+]
+
 function decodeEntities(input) {
   return String(input)
     .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
@@ -206,10 +248,7 @@ function stripNoise(html) {
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
     .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
-    .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
-    .replace(/<header[\s\S]*?<\/header>/gi, ' ')
-    .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
-    .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
+    .replace(/<(nav|header|footer|aside)\b[\s\S]{0,4000}?<\/\1>/gi, ' ')
     .replace(/<!--[\s\S]*?-->/g, ' ')
 }
 
@@ -267,7 +306,8 @@ export async function fetchOfficialList(source, { signal, timeoutMs = 18000 } = 
     if (filter && !filter.test(title)) continue
     seen.add(link)
     items.push({
-      title,
+      title: title.length > DISPLAY_TITLE ? `${title.slice(0, DISPLAY_TITLE - 1)}…` : title,
+      fullTitle: title,
       link,
       source: source.name,
       lang: source.lang || 'en',

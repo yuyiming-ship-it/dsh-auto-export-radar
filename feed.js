@@ -7,7 +7,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { extractArticle } from './article.js'
 import { collect, EDITIONS, FEEDS, LOCALES, looksLikeAppliance } from './radar.js'
-import { OFFICIAL_REFS, OFFICIAL_SOURCES, fetchOfficialList } from './official.js'
+import { OFFICIAL_REFS, OFFICIAL_SOURCES, WATCH_SOURCES, fetchOfficialList } from './official.js'
 import {
   PLATFORMS,
   SOCIAL_TEMPLATE,
@@ -278,6 +278,8 @@ function emptyState() {
     socialChannels: [],
     socialConfig: { bridgeBase: '', xBearer: '' },
     officialSources: [],
+    officialWatch: {},
+    officialSeen: {},
   }
 }
 
@@ -318,6 +320,8 @@ function normalizeSaved(saved) {
         }))
         .slice(0, SOCIAL_MAX)
     : []
+  state.officialWatch = isPlainObject(saved.officialWatch) ? saved.officialWatch : {}
+  state.officialSeen = isPlainObject(saved.officialSeen) ? saved.officialSeen : {}
   state.officialSources = Array.isArray(saved.officialSources)
     ? saved.officialSources
         .filter((row) => isPlainObject(row) && typeof row.url === 'string' && /^https?:\/\//i.test(row.url))
@@ -588,7 +592,27 @@ export class RadarFeed {
       custom: true,
     }))
     const builtin = OFFICIAL_SOURCES.map((row) => ({ ...row, custom: false }))
-    return [...builtin, ...custom]
+    const watch = WATCH_SOURCES.map((row) => ({
+      ...row,
+      custom: false,
+      watch: true,
+      enabled: this.watchEnabled(row),
+    }))
+    return [...builtin, ...watch, ...custom]
+  }
+
+  watchEnabled(source) {
+    const override = this.state.officialWatch?.[source.id]
+    if (typeof override === 'boolean') return override
+    return source.enabledByDefault !== false
+  }
+
+  /** 打开/关闭一个增量监控源。 */
+  async saveWatch(id, enabled) {
+    if (!String(id || '').trim()) throw new Error('缺少信源 id')
+    this.state.officialWatch = { ...(this.state.officialWatch || {}), [id]: Boolean(enabled) }
+    await this.save()
+    return { id, enabled: Boolean(enabled) }
   }
 
   /**
@@ -603,9 +627,40 @@ export class RadarFeed {
     if (!sources.length) return { items, sources: sourcesOut }
     const seen = new Set()
     await mapLimit(sources, 3, async (source) => {
+      if (source.watch && !this.watchEnabled(source)) {
+        sourcesOut.push({ name: source.name, ok: true, items: 0, error: null, lang: source.lang, official: true, watch: true, paused: true, note: source.note || '已暂停' })
+        this.officialStatus.set(source.id, { ok: true, items: 0, error: null, at: now, watch: true, paused: true, note: source.note || '已暂停' })
+        return
+      }
       try {
         const rows = await fetchOfficialList(source)
         let kept = 0
+        if (source.watch) {
+          const previous = Array.isArray(this.state.officialSeen?.[source.id]) ? this.state.officialSeen[source.id] : null
+          const firstRun = previous === null
+          const known = new Set(previous || [])
+          const baseline = Number.isFinite(source.baseline) ? source.baseline : 6
+          for (const row of rows) {
+            const key = linkKey(row.link)
+            if (seen.has(key)) continue
+            const isNew = !known.has(key)
+            seen.add(key)
+            if (!isNew) continue
+            if (firstRun && kept >= baseline) continue
+            items.push({ ...row, watchNew: true })
+            kept += 1
+          }
+          this.state.officialSeen = {
+            ...(this.state.officialSeen || {}),
+            [source.id]: rows.map((row) => linkKey(row.link)).slice(0, 400),
+          }
+          const note = kept
+            ? `${firstRun ? '首次基线' : '新增'} ${kept} 条`
+            : '本期没有新法令'
+          sourcesOut.push({ name: source.name, ok: true, items: kept, error: null, lang: source.lang, official: true, watch: true, new: kept, firstRun, note })
+          this.officialStatus.set(source.id, { ok: true, items: kept, error: null, at: now, watch: true, new: kept, firstRun, note })
+          return
+        }
         for (const row of rows) {
           const key = linkKey(row.link)
           if (seen.has(key)) continue
@@ -814,6 +869,8 @@ export class RadarFeed {
         region: source.region || '',
         lang: source.lang,
         custom: Boolean(source.custom),
+        watch: Boolean(source.watch),
+        enabled: source.watch ? this.watchEnabled(source) : true,
         url: source.url,
         status: this.officialStatus.get(source.id) || null,
       })),
