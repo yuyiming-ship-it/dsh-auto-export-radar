@@ -280,6 +280,13 @@ export default {
                 return json(res, 200, { ok: true, ...result })
               }
 
+              if (path === `${ROUTE}/official` && method === 'POST') {
+                const body = await readJson(req)
+                const result = await feed.saveOfficialSources(Array.isArray(body.sources) ? body.sources : [])
+                void feed.refresh('official-changed')
+                return json(res, 200, { ok: true, ...result, refreshing: true })
+              }
+
               if (path === `${ROUTE}/social` && method === 'POST') {
                 const body = await readJson(req)
                 const result = await feed.saveSocialChannels(Array.isArray(body.channels) ? body.channels : [])

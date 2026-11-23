@@ -7,6 +7,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { extractArticle } from './article.js'
 import { collect, EDITIONS, FEEDS, LOCALES, looksLikeAppliance } from './radar.js'
+import { OFFICIAL_SOURCES, fetchOfficialList } from './official.js'
 import {
   PLATFORMS,
   SOCIAL_TEMPLATE,
@@ -276,6 +277,7 @@ function emptyState() {
     settings: {},
     socialChannels: [],
     socialConfig: { bridgeBase: '', xBearer: '' },
+    officialSources: [],
   }
 }
 
@@ -315,6 +317,19 @@ function normalizeSaved(saved) {
           enabled: row.enabled !== false,
         }))
         .slice(0, SOCIAL_MAX)
+    : []
+  state.officialSources = Array.isArray(saved.officialSources)
+    ? saved.officialSources
+        .filter((row) => isPlainObject(row) && typeof row.url === 'string' && /^https?:\/\//i.test(row.url))
+        .map((row) => ({
+          id: typeof row.id === 'string' && row.id ? row.id : hash(row.url),
+          name: (typeof row.name === 'string' && row.name.trim()) || String(row.url).replace(/^https?:\/\//, '').slice(0, 40),
+          url: String(row.url).trim(),
+          lang: typeof row.lang === 'string' && row.lang ? row.lang.slice(0, 8) : 'en',
+          region: typeof row.region === 'string' ? row.region.slice(0, 24) : '',
+          filter: typeof row.filter === 'string' ? row.filter.slice(0, 300) : 'vehicle|automotive|car|汽车|авто|سيار|otomobil|voiture|veículo|автомоб',
+        }))
+        .slice(0, 40)
     : []
   state.socialConfig = {
     bridgeBase: isPlainObject(saved.socialConfig) && typeof saved.socialConfig.bridgeBase === 'string' ? saved.socialConfig.bridgeBase : '',
@@ -369,6 +384,7 @@ export class RadarFeed {
     this.timer = null
     this.loaded = false
     this.socialStatus = new Map()
+    this.officialStatus = new Map()
     this.ready = this.load()
   }
 
@@ -493,12 +509,12 @@ export class RadarFeed {
           mode: 'all',
           feeds: this.feedList(),
         })
-        const social = await this.collectSocial()
+        const [social, official] = await Promise.all([this.collectSocial(), this.collectOfficial()])
         this.merge({
           ...result,
-          items: [...(result.items || []), ...social.items],
-          collected: (result.collected || 0) + social.items.length,
-          sources: [...(result.sources || []), ...social.sources],
+          items: [...(result.items || []), ...social.items, ...official.items],
+          collected: (result.collected || 0) + social.items.length + official.items.length,
+          sources: [...(result.sources || []), ...social.sources, ...official.sources],
         })
         if (this.config.translate) await this.translatePending()
         this.state.generatedAt = new Date().toISOString()
@@ -555,6 +571,63 @@ export class RadarFeed {
     this.state.items = items
     this.state.collected = result.collected ?? items.length
     this.state.sources = Array.isArray(result.sources) ? result.sources : []
+  }
+
+  /** 官方信源：内置清单 + 自己加的页面。 */
+  officialList() {
+    const custom = (this.state.officialSources || []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      lang: row.lang,
+      region: row.region,
+      filter: row.filter,
+      custom: true,
+    }))
+    const builtin = OFFICIAL_SOURCES.map((row) => ({ ...row, custom: false }))
+    return [...builtin, ...custom]
+  }
+
+  /**
+   * 抓官方公告页：部委 / 海关 / 公报没有 RSS，用列表页 + 关键词过滤。
+   * 没有匹配公告时记 0 条（正常），打不开才记故障。
+   */
+  async collectOfficial() {
+    const sources = this.officialList()
+    const items = []
+    const sourcesOut = []
+    const now = new Date().toISOString()
+    if (!sources.length) return { items, sources: sourcesOut }
+    const seen = new Set()
+    await mapLimit(sources, 3, async (source) => {
+      try {
+        const rows = await fetchOfficialList(source)
+        let kept = 0
+        for (const row of rows) {
+          const key = linkKey(row.link)
+          if (seen.has(key)) continue
+          seen.add(key)
+          items.push(row)
+          kept += 1
+        }
+        sourcesOut.push({
+          name: source.name,
+          ok: true,
+          items: kept,
+          error: null,
+          lang: source.lang,
+          official: true,
+          note: kept ? null : '本期没有匹配关键词的公告',
+        })
+        this.officialStatus.set(source.id, { ok: true, items: kept, error: null, at: now, note: kept ? null : '本期没有匹配关键词的公告' })
+      } catch (error) {
+        const message = String(error?.message ?? error)
+        sourcesOut.push({ name: source.name, ok: false, items: 0, error: message, lang: source.lang, official: true })
+        this.officialStatus.set(source.id, { ok: false, items: 0, error: message, at: now })
+        this.logger?.warn?.('auto-export-radar: 官方信源失败 %s：%s', source.name, message)
+      }
+    })
+    return { items, sources: sourcesOut }
   }
 
   /** 社交连接状态（不返回令牌本身）。 */
@@ -724,8 +797,43 @@ export class RadarFeed {
         feeds: this.feedList().map((feed) => ({ name: feed.name, lang: feed.lang, region: feed.region })),
       },
       customFeeds,
+      official: this.officialView(),
       social: this.socialView(items),
     }
+  }
+
+  officialView() {
+    return {
+      sources: this.officialList().map((source) => ({
+        id: source.id,
+        name: source.name,
+        region: source.region || '',
+        lang: source.lang,
+        custom: Boolean(source.custom),
+        url: source.url,
+        status: this.officialStatus.get(source.id) || null,
+      })),
+      count: (this.state.sources || []).filter((row) => row.official).reduce((sum, row) => sum + (row.items || 0), 0),
+    }
+  }
+
+  /** 覆盖保存自定义官方页面。 */
+  async saveOfficialSources(list) {
+    const rows = (Array.isArray(list) ? list : [])
+      .filter((row) => isPlainObject(row) && typeof row.url === 'string' && /^https?:\/\//i.test(row.url))
+      .map((row) => ({
+        id: typeof row.id === 'string' && row.id ? row.id : hash(String(row.url).trim()),
+        name: (typeof row.name === 'string' ? row.name.trim() : '').slice(0, 60) || String(row.url).replace(/^https?:\/\//, '').slice(0, 40),
+        url: String(row.url).trim(),
+        lang: typeof row.lang === 'string' && row.lang ? row.lang.slice(0, 8) : 'en',
+        region: typeof row.region === 'string' ? row.region.slice(0, 24) : '',
+        filter: typeof row.filter === 'string' ? row.filter.slice(0, 300) : '',
+      }))
+      .slice(0, 40)
+    this.state.officialSources = rows
+    this.officialStatus = new Map()
+    await this.save()
+    return { officialSources: rows }
   }
 
   socialView(items) {
@@ -837,6 +945,7 @@ export class RadarFeed {
       .slice(0, SOCIAL_MAX)
     this.state.socialChannels = rows
     this.socialStatus = new Map()
+    this.officialStatus = new Map()
     await this.save()
     return { socialChannels: rows }
   }

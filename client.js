@@ -54,6 +54,15 @@ window.__ModuleLoader__.load({
       readState: '阅读状态',
       channelsNews: '多语种新闻订阅（Google News 本地版）',
       channelsFeeds: '订阅源（内置 + 你自己加的）',
+      officialSources: '官方信源（部委 / 海关 / 公报）',
+      officialHint: '这些站点基本没有 RSS，按列表页 + 关键词抓公告；打不开或本期没有匹配的公告都会写明。',
+      officialEmpty: '本期无匹配公告',
+      officialCount: '{n} 条',
+      officialAdd: '添加官方页面',
+      officialNamePlaceholder: '名称（如 伊朗工矿贸易部）',
+      officialUrlPlaceholder: '公告列表页地址',
+      officialFilterPlaceholder: '关键词正则（可空）',
+      officialBadge: '官方',
       socialSources: '社交源（X / Facebook / Threads）',
       socialNotReady: '还没连。这三个平台没有免登录的公开读取通道，需要二选一：自建 RSSHub 桥，或填 X 官方 API 令牌。',
       socialBridgeReady: '已接自建桥：{base}',
@@ -152,6 +161,15 @@ window.__ModuleLoader__.load({
       readState: 'Read state',
       channelsNews: 'Localized news editions (Google News)',
       channelsFeeds: 'Feeds (built in + yours)',
+      officialSources: 'Official sources (ministries, customs, gazettes)',
+      officialHint: 'These sites rarely offer RSS, so the plugin reads their listing pages and keeps links that match the topic keywords. A failed page or an empty round is reported explicitly.',
+      officialEmpty: 'No matching notice this round',
+      officialCount: '{n} items',
+      officialAdd: 'Add an official page',
+      officialNamePlaceholder: 'Name (e.g. Iran Ministry of Industry)',
+      officialUrlPlaceholder: 'Listing page URL',
+      officialFilterPlaceholder: 'Keyword regex (optional)',
+      officialBadge: 'Official',
       socialSources: 'Social sources (X / Facebook / Threads)',
       socialNotReady: 'Not connected yet. None of these platforms allows anonymous server-side reading: either point the plugin at your own RSSHub bridge, or add an X API bearer token.',
       socialBridgeReady: 'Self-hosted bridge: {base}',
@@ -489,6 +507,17 @@ window.__ModuleLoader__.load({
         return body
       }, [])
 
+      const saveOfficial = React.useCallback(async (sources) => {
+        const res = await fetch(API('/official'), {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sources }),
+        })
+        const body = await readJsonResponse(res)
+        setData((current) => (current ? { ...current, official: { ...(current.official || {}), sources: (current.official?.sources || []).filter((s) => !s.custom) }, refreshing: true } : current))
+        return body
+      }, [])
+
       const saveSocialSettings = React.useCallback(async (patch) => {
         const res = await fetch(API('/social/settings'), {
           method: 'POST', credentials: 'same-origin',
@@ -507,7 +536,7 @@ window.__ModuleLoader__.load({
       return {
         data, setData, error, auto, setAuto, refreshNow, manualBusy, load,
         markRead, markAllRead, markAllUnread, toggleFavorite, saveSettings, saveFeeds,
-        saveSocial, saveSocialSettings,
+        saveSocial, saveSocialSettings, saveOfficial,
       }
     }
 
@@ -649,6 +678,7 @@ window.__ModuleLoader__.load({
         el('span', { className: `aer-lang lang-${item.lang}` }, LANGS[item.lang] || item.lang),
         el('span', { className: 'aer-item-title' }, title),
         item.via === 'social' ? el('span', { className: 'aer-social-badge' }, t('socialBadge')) : null,
+        item.via === 'official' ? el('span', { className: 'aer-official-badge' }, t('officialBadge')) : null,
         watched ? el('span', { className: 'aer-watch' }, '★') : null,
         item.titleZh ? null : el('span', { className: 'aer-pending' }, t('untranslated')),
         el('button', {
@@ -761,7 +791,7 @@ window.__ModuleLoader__.load({
           el('p', { className: 'aer-note' }, t('onlyTitles'))))
     }
 
-    function ChannelsView({ t, data, onSaveFeeds, onSaveSocial, onImport, importing, message }) {
+    function ChannelsView({ t, data, onSaveFeeds, onSaveSocial, onSaveOfficial, onImport, importing, message }) {
       const news = data?.channels?.news || []
       const social = data?.social || {}
       const socialChannels = social.channels || []
@@ -804,6 +834,23 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const official = data?.official || {}
+      const officialSources = official.sources || []
+      const [offName, setOffName] = React.useState('')
+      const [offUrl, setOffUrl] = React.useState('')
+      const [offFilter, setOffFilter] = React.useState('')
+      const [offLang, setOffLang] = React.useState('en')
+      const saveOfficialList = (list) => onSaveOfficial(list)
+      const submitOfficial = (event) => {
+        event.preventDefault()
+        const url = offUrl.trim()
+        if (!url) return
+        saveOfficialList([...officialSources.filter((s) => s.custom).map((s) => ({ id: s.id, name: s.name, url: s.url, lang: s.lang, region: s.region, filter: s.filter })),
+          { name: offName.trim(), url, lang: offLang, filter: offFilter.trim() }])
+        setOffName('')
+        setOffUrl('')
+        setOffFilter('')
+      }
       const socialConnected = Boolean(social.configured?.bridge || social.configured?.x)
       return el('div', { className: 'aer-channels' },
         el('section', { className: 'aer-card' },
@@ -848,6 +895,32 @@ window.__ModuleLoader__.load({
               type: 'button', className: 'aer-btn', disabled: socialBusy,
               onClick: () => saveSocialList([...socialChannels, ...(social.template || [])]),
             }, icon('star', 14), el('span', null, t('socialTemplate')))))
+        ,
+        el('section', { className: 'aer-card' },
+          el('h2', null, t('officialSources')),
+          el('p', { className: 'aer-note' }, t('officialHint')),
+          el('ul', { className: 'aer-channel-list' }, officialSources.map((source) => el('li', { key: source.id },
+            el('span', { className: 'aer-lang platform-official' }, LANGS[source.lang] || String(source.lang || '').toUpperCase()),
+            el('strong', null, source.name),
+            el('span', { className: 'aer-muted' }, source.region || ''),
+            source.status?.ok === false
+              ? el('span', { className: 'aer-state is-bad' }, source.status.error || '×')
+              : source.status?.items
+                ? el('span', { className: 'aer-state is-good' }, fill(t('officialCount'), { n: source.status.items }))
+                : el('span', { className: 'aer-state' }, t('officialEmpty')),
+            source.custom
+              ? el(IconButton, {
+                name: 'trash', label: t('remove'), className: 'is-quiet',
+                onClick: () => saveOfficialList(officialSources.filter((row) => row.custom && row.id !== source.id).map((s) => ({ id: s.id, name: s.name, url: s.url, lang: s.lang, region: s.region, filter: s.filter }))),
+              })
+              : null))),
+          el('form', { className: 'aer-feed-form', onSubmit: submitOfficial },
+            el('input', { value: offName, placeholder: t('officialNamePlaceholder'), onChange: (event) => setOffName(event.target.value), 'aria-label': t('officialNamePlaceholder') }),
+            el('input', { value: offUrl, type: 'url', placeholder: t('officialUrlPlaceholder'), onChange: (event) => setOffUrl(event.target.value), 'aria-label': t('officialUrlPlaceholder'), required: true }),
+            el('select', { value: offLang, onChange: (event) => setOffLang(event.target.value), 'aria-label': 'lang' },
+              CODES.map((code) => el('option', { key: code, value: code }, LANGS[code]))),
+            el('input', { value: offFilter, placeholder: t('officialFilterPlaceholder'), onChange: (event) => setOffFilter(event.target.value), 'aria-label': t('officialFilterPlaceholder') }),
+            el('button', { type: 'submit', className: 'aer-btn', disabled: !offUrl.trim() }, icon('plus', 14), el('span', null, t('officialAdd')))))
         ,
         el('section', { className: 'aer-card' },
           el('h2', null, t('channelsFeeds')),
@@ -1204,7 +1277,8 @@ window.__ModuleLoader__.load({
 
       const body = tab === 'channels'
         ? el('div', { className: 'aer-main' }, el(ChannelsView, {
-          t, data, onSaveFeeds: radar.saveFeeds, onSaveSocial: radar.saveSocial, onImport: importOpml, importing,
+          t, data, onSaveFeeds: radar.saveFeeds, onSaveSocial: radar.saveSocial, onSaveOfficial: radar.saveOfficial,
+          onImport: importOpml, importing,
           message: feedMessage,
         }))
         : tab === 'settings'
@@ -1425,9 +1499,11 @@ window.__ModuleLoader__.load({
 .aer-star.is-on svg { fill: currentColor; }
 .aer-item-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 5px; font-size: 11.5px; color: var(--ink2); }
 .aer-item-meta .aer-src { color: var(--ink2); font-weight: 500; }
+.aer-official-badge { flex: none; font-size: 10px; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, #0f766e 14%, transparent); color: #0f766e; }
 .aer-social-badge { flex: none; font-size: 10px; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, #7c3aed 14%, transparent); color: #7c3aed; }
 .aer-lang.platform-x { background: color-mix(in srgb, #111 12%, transparent); color: var(--ink); }
 .aer-lang.platform-facebook { background: color-mix(in srgb, #1877f2 14%, transparent); color: #1877f2; }
+.aer-lang.platform-official { background: color-mix(in srgb, #0f766e 14%, transparent); color: #0f766e; }
 .aer-lang.platform-threads { background: color-mix(in srgb, #000 12%, transparent); color: var(--ink2); }
 .aer-state.is-warn { color: var(--warn); }
 .aer-field { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
