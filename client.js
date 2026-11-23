@@ -347,6 +347,7 @@ window.__ModuleLoader__.load({
           el('path', { key: 'a', d: 'M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5' }),
           el('path', { key: 'b', d: 'M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15' }),
         ],
+        chevron: el('path', { key: 'a', d: 'm6 9.5 6 6 6-6' }),
         alert: [
           el('path', { key: 'a', d: 'M12 4.5 21 19.5H3z' }),
           el('path', { key: 'b', d: 'M12 10v4.2M12 17.2v.1' }),
@@ -786,46 +787,55 @@ window.__ModuleLoader__.load({
                 : el('div', { className: 'aer-state-block' }, el('p', null, t('empty')))))
     }
 
-    function SideRail({ t, data, visible, onCopy, copied, onMarkAll, hasUnread }) {
-      const [healthOpen, setHealthOpen] = React.useState(() => {
-        try { return localStorage.getItem('aer.rail.health') === '1' } catch { return false }
+    function StatusBar({ t, data, visible, onCopy, copied, onMarkAll, hasUnread }) {
+      const [open, setOpen] = React.useState(() => {
+        try { return localStorage.getItem('aer.statusbar') !== '0' } catch { return true }
       })
+      const [failOpen, setFailOpen] = React.useState(false)
       if (!data) return null
       const langs = Object.entries(data.byLang || {}).sort((a, b) => b[1] - a[1])
-      const total = langs.reduce((sum, row) => sum + row[1], 0) || 1
       const failed = data.channelHealth?.failed || []
-      const toggleHealth = () => setHealthOpen((open) => {
-        const next = !open
-        try { localStorage.setItem('aer.rail.health', next ? '1' : '0') } catch { /* 忽略隐私模式写入失败 */ }
+      const ok = data.channelHealth?.ok ?? 0
+      const total = data.channelHealth?.total ?? 0
+      const healthText = failed.length ? fill(t('healthFail'), { n: failed.length }) : fill(t('healthOk'), { ok, total })
+      const toggle = () => setOpen((value) => {
+        const next = !value
+        try { localStorage.setItem('aer.statusbar', next ? '1' : '0') } catch { /* 隐私模式写不进去就算了 */ }
         return next
       })
-      return el('aside', { className: 'aer-rail' },
-        el('section', { className: 'aer-card' },
-          el('h2', null, t('langDist')),
-          el('ul', { className: 'aer-bars' }, langs.map(([code, count]) => el('li', { key: code },
-            el('span', { className: 'aer-bar-label' }, LANGS[code] || code),
-            el('span', { className: 'aer-bar' }, el('i', { style: { width: `${Math.max(4, Math.round((count / total) * 100))}%` } })),
-            el('span', { className: 'aer-bar-count' }, count))))),
-        el('section', { className: 'aer-card' },
-          el('div', { className: 'aer-card-head' },
-            el('h2', null, t('live')),
-            el('span', null, fill(t('count'), { n: visible }))),
-          el('button', { type: 'button', className: 'aer-btn is-wide', onClick: onCopy }, icon('copy', 15), el('span', null, copied ? t('copied') : t('copyDigest'))),
-          hasUnread ? el('button', { type: 'button', className: 'aer-btn is-wide is-quiet', onClick: onMarkAll }, t('markAllRead')) : null,
-          el('p', { className: 'aer-note' }, t('onlyTitles'))),
-        el('section', { className: 'aer-card aer-card-health' },
-          el('div', { className: 'aer-card-head' },
-            el('h2', null, t('health')),
-            el('button', {
-              type: 'button', className: 'aer-toggle', onClick: toggleHealth,
-              'aria-expanded': healthOpen, title: healthOpen ? t('collapse') : t('expand'),
-            }, healthOpen ? t('collapse') : t('expand'))),
-          el('p', { className: failed.length ? 'aer-health is-warn' : 'aer-health is-ok' },
-            failed.length ? fill(t('healthFail'), { n: failed.length }) : fill(t('healthOk'), { ok: data.channelHealth?.ok ?? 0, total: data.channelHealth?.total ?? 0 })),
-          healthOpen && failed.length
-            ? el('ul', { className: 'aer-fails' }, failed.slice(0, 6).map((row) => el('li', { key: row.name },
-              el('strong', null, row.name), row.error ? el('span', null, row.error) : null)))
-            : null))
+      if (!open) {
+        return el('div', { className: 'aer-statusbar is-collapsed' },
+          el('span', { className: failed.length ? 'aer-health is-warn is-mini' : 'aer-health is-ok is-mini' }, healthText),
+          el('span', { className: 'aer-status-rule' }),
+          el('span', { className: 'aer-status-mini' }, langs.slice(0, 3).map(([code, count]) => `${LANGS[code] || code} ${count}`).join(' · ')),
+          el('button', { type: 'button', className: 'aer-btn is-quiet is-mini', onClick: toggle, title: t('expand') },
+            icon('chevron', 13), el('span', null, t('expand'))))
+      }
+      return el('div', { className: 'aer-statusbar' },
+        el('button', {
+          type: 'button',
+          className: failed.length ? 'aer-status-health is-warn' : 'aer-status-health',
+          onClick: () => (failed.length ? setFailOpen((value) => !value) : undefined),
+          'aria-expanded': failOpen,
+          title: failed.length ? t('health') : healthText,
+        },
+          el('span', { className: 'aer-status-label' }, t('health')),
+          el('span', null, healthText)),
+        failOpen && failed.length
+          ? el('div', { className: 'aer-status-pop' },
+            el('ul', { className: 'aer-fails' }, failed.slice(0, 8).map((row) => el('li', { key: row.name },
+              el('strong', null, row.name), row.error ? el('span', null, row.error) : null))))
+          : null,
+        el('span', { className: 'aer-status-rule' }),
+        el('div', { className: 'aer-status-group' },
+          el('span', { className: 'aer-status-label' }, t('langDist')),
+          el('div', { className: 'aer-langrow' }, langs.map(([code, count]) => el('span', { className: 'aer-langitem', key: code },
+            LANGS[code] || code, el('b', null, count))))),
+        el('div', { className: 'aer-status-actions' },
+          el('span', { className: 'aer-status-mini' }, fill(t('count'), { n: visible })),
+          el('button', { type: 'button', className: 'aer-btn', onClick: onCopy }, icon('copy', 14), el('span', null, copied ? t('copied') : t('copyDigest'))),
+          hasUnread ? el('button', { type: 'button', className: 'aer-btn is-quiet', onClick: onMarkAll }, t('markAllRead')) : null,
+          el('button', { type: 'button', className: 'aer-icon-btn', onClick: toggle, title: t('collapse'), 'aria-expanded': open }, icon('chevron', 15))))
     }
 
     function ChannelsView({ t, data, onSaveFeeds, onSaveSocial, onSaveOfficial, onSaveWatch, onImport, importing, message }) {
@@ -1364,13 +1374,6 @@ window.__ModuleLoader__.load({
               ? el('p', { className: 'aer-foot-note is-warn' }, `${t('err')}: ${data.lastError}`)
               : null)
 
-      const rail = tab === 'feed'
-        ? el(SideRail, {
-          t, data, visible: filtered.length, onCopy: copyDigest, copied,
-          onMarkAll: markAllReadNow, hasUnread: Boolean(data?.unreadCount),
-        })
-        : null
-
       return el('div', { className: 'aer-root' },
         el('style', null, CSS),
         el(Header, {
@@ -1384,7 +1387,6 @@ window.__ModuleLoader__.load({
         }),
         el('div', { className: `aer-body ${showReader ? 'has-reader' : ''}` },
           body,
-          rail,
           showReader
             ? el(Reader, {
               t,
@@ -1397,7 +1399,13 @@ window.__ModuleLoader__.load({
               onFavorite: radar.toggleFavorite,
               translating,
             })
-            : null))
+            : null),
+        tab === 'feed'
+          ? el(StatusBar, {
+            t, data, visible: filtered.length, onCopy: copyDigest, copied,
+            onMarkAll: markAllReadNow, hasUnread: Boolean(data?.unreadCount),
+          })
+          : null)
     }
 
     function apply(ctx) {
@@ -1648,31 +1656,49 @@ window.__ModuleLoader__.load({
 .aer-open { margin-left: auto; display: inline-flex; color: var(--ink-3); opacity: 0; transition: opacity .15s; }
 .aer-item:hover .aer-open, .aer-item:focus-visible .aer-open { opacity: 1; }
 
-/* ---------- 右栏 ---------- */
-.aer-rail { flex: none; width: 268px; overflow-y: auto; padding: 16px 28px 28px 20px; display: flex; flex-direction: column; gap: 0; border-left: 1px solid var(--line-subtle); }
-.aer-card { padding: 14px 0 16px; border-bottom: 1px solid var(--line-subtle); }
-.aer-card:first-child { padding-top: 0; }
-.aer-card:last-child { border-bottom: 0; }
-.aer-card h2 { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 6px; }
-.aer-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.aer-card-head span { font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); }
-.aer-card-head .aer-toggle { margin-left: auto; }
-.aer-card-health { padding-bottom: 4px; }
-.aer-card-health .aer-health { margin-top: 6px; }
-.aer-health { margin-top: 8px; font-size: 13px; font-weight: 500; }
-.aer-health.is-ok { color: var(--ok); }
-.aer-health.is-warn { color: var(--warn); }
-.aer-fails { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-.aer-fails li { font-size: 11px; line-height: 1.45; color: var(--ink-3); }
-.aer-fails strong { display: block; color: var(--ink-2); font-weight: 500; }
-.aer-bars { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-.aer-bars li { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); }
-.aer-bar-label { width: 44px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
-.aer-bar { flex: 1; height: 4px; background: var(--grey-2); overflow: hidden; }
-.aer-bar i { display: block; height: 100%; background: var(--accent); }
-.aer-bar-count { width: 22px; text-align: right; flex: none; }
-.aer-note { margin-top: 8px; font-size: 11px; line-height: 1.6; color: var(--ink-3); }
-.aer-setting-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+/* ---------- 底部状态栏 ---------- */
+.aer-statusbar {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 28px;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
+  overflow: hidden;
+}
+.aer-statusbar.is-collapsed { min-height: 30px; gap: 10px; }
+.aer-status-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); flex: none; }
+.aer-status-health {
+  display: inline-flex; align-items: baseline; gap: 8px; flex: none;
+  padding: 4px 0; color: var(--ink-2); font-size: 12px; font-weight: 500;
+}
+.aer-status-health.is-warn { color: var(--warn); cursor: pointer; }
+.aer-status-health.is-warn:hover { text-decoration: underline; text-underline-offset: 2px; }
+.aer-status-rule { width: 1px; height: 16px; background: var(--line-subtle); flex: none; }
+.aer-status-group { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 1 1 auto; }
+.aer-langrow { display: flex; align-items: baseline; gap: 12px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.aer-langrow::-webkit-scrollbar { display: none; }
+.aer-langitem { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3); white-space: nowrap; display: inline-flex; align-items: baseline; gap: 4px; }
+.aer-langitem b { font-weight: 500; color: var(--ink-body); }
+.aer-status-mini { font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em; color: var(--ink-3); white-space: nowrap; }
+.aer-status-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+.aer-status-actions .aer-btn { height: 26px; padding: 0 10px; font-size: 11px; }
+.aer-status-actions .aer-icon-btn { width: 26px; height: 26px; }
+.aer-statusbar.is-collapsed .aer-icon-btn svg { transform: rotate(180deg); }
+.aer-status-pop {
+  position: absolute; right: 28px; bottom: calc(100% + 1px); width: min(360px, 70vw);
+  background: var(--paper); border: 1px solid var(--ink); padding: 10px 14px; z-index: 6;
+  max-height: 40vh; overflow-y: auto;
+}
+.aer-health.is-mini { margin: 0; font-size: 11px; }
+.aer-btn.is-mini { height: 22px; padding: 0 8px; font-size: 10.5px; }
+.aer-fails { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.aer-fails li { font-size: 11px; line-height: 1.45; color: var(--ink-2); }
+.aer-fails strong { display: block; font-weight: 500; }
+.aer-fails span { color: var(--ink-3); }
 
 /* ---------- 渠道 / 设置 ---------- */
 .aer-channels, .aer-settings { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 32px; align-content: start; background: var(--paper); }
@@ -1726,7 +1752,7 @@ window.__ModuleLoader__.load({
 .aer-lang.platform-threads { border-color: var(--ink-3); color: var(--ink-3); }
 
 /* ---------- 阅读器 ---------- */
-.aer-reader { flex: none; width: min(46%, 560px); min-width: 340px; display: flex; flex-direction: column; border-left: 1px solid var(--ink); background: var(--paper); }
+.aer-reader { flex: none; width: min(50%, 620px); min-width: 340px; display: flex; flex-direction: column; border-left: 1px solid var(--ink); background: var(--paper); }
 .aer-reader-head { flex: none; display: flex; align-items: flex-start; gap: 8px; padding: 18px 20px 10px; }
 .aer-reader-titles { flex: 1; min-width: 0; }
 .aer-reader-titles h2 { font-size: 17px; font-weight: 500; line-height: 1.4; letter-spacing: -.015em; }
@@ -1761,12 +1787,16 @@ window.__ModuleLoader__.load({
 .aer-foot-note.is-warn { color: var(--warn); }
 
 @media (max-width: 1180px) {
-  .aer-rail { display: none; }
   .aer-channels { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .aer-body.has-reader .aer-main { display: none; }
   .aer-reader { width: 100%; min-width: 0; border-left: 0; }
+}
+@media (max-width: 820px) {
+  .aer-statusbar { padding: 0 14px; gap: 8px; }
+  .aer-status-label { display: none; }
+  .aer-status-actions .aer-status-mini { display: none; }
 }
 @media (max-width: 720px) {
   .aer-head { padding: 14px; }
