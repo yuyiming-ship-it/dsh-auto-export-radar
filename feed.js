@@ -25,6 +25,9 @@ const VIEW_HOURS = 96
 const GOOGLE = 'https://translate.googleapis.com/translate_a/single'
 const TRANSLATE_TIMEOUT_MS = 9000
 const TRANSLATE_CONCURRENCY = 4
+const TRANSLATE_BATCH = 16
+const TRANSLATE_CHUNK_CONCURRENCY = 4
+const TRANSLATE_CACHE_LIMIT = 6000
 const MAX_TRANSLATE_PER_CYCLE = 100
 const ARTICLE_TTL_MS = 14 * 24 * 3600 * 1000
 const ARTICLE_MAX = 120
@@ -87,6 +90,31 @@ function mapLimit(items, limit, worker) {
 /* ------------------------------------------------------------------ */
 /* 翻译：先用免费的公开接口，失败再退回 DSH 当前默认模型                */
 /* ------------------------------------------------------------------ */
+
+/**
+ * 一次请求翻一批：translate_a/t 支持重复 q，响应按顺序给 [译文, 源语言]。
+ * 比逐条请求少一个数量级的往返。
+ */
+async function googleBatch(texts, signal) {
+  const url = 'https://translate.googleapis.com/translate_a/t?client=gtx&sl=auto&tl=zh-CN'
+  const body = texts.map((text) => `q=${encodeURIComponent(text)}`).join('&')
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+    },
+    body,
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TRANSLATE_TIMEOUT_MS)]) : AbortSignal.timeout(TRANSLATE_TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  if (!Array.isArray(data) || data.length !== texts.length) throw new Error('batch shape mismatch')
+  return data.map((row) => {
+    if (Array.isArray(row)) return String(row[0] ?? '').trim()
+    return typeof row === 'string' ? row.trim() : ''
+  })
+}
 
 async function googleOne(text, signal) {
   const url = new URL(GOOGLE)
@@ -192,60 +220,109 @@ async function translateParagraphs(ctx, paragraphs, signal, logger) {
   }
   if (current.length) chunks.push(current)
 
-  const out = []
-  let translated = 0
-  for (const chunk of chunks) {
+  const out = new Array(paragraphs.length)
+  let done = 0
+  let offset = 0
+  const positions = chunks.map((chunk) => {
+    const start = offset
+    offset += chunk.length
+    return start
+  })
+  await mapLimit(chunks, 3, async (chunk, chunkIndex) => {
+    const start = positions[chunkIndex]
+    try {
+      const rows = await googleBatch(chunk, signal)
+      if (rows.length === chunk.length && rows.every(Boolean)) {
+        rows.forEach((text, index) => { out[start + index] = text })
+        done += 1
+        return
+      }
+      throw new Error('batch shape mismatch')
+    } catch {
+      /* 免费接口不行再走模型 */
+    }
     const numbered = chunk.map((text, index) => `【${index + 1}】${text}`).join('\n\n')
     try {
       const raw = await llmText(ctx, { system: BODY_SYSTEM, user: numbered, maxTokens: 4000, signal })
       const parsed = parseJsonArray(raw)
       if (parsed && parsed.length === chunk.length && parsed.every(Boolean)) {
-        out.push(...parsed)
-        translated += 1
+        parsed.forEach((text, index) => { out[start + index] = text })
+        done += 1
       } else {
-        out.push(...chunk)
+        chunk.forEach((text, index) => { out[start + index] = text })
       }
     } catch (error) {
       logger?.warn?.('auto-export-radar: 正文翻译失败：%s', error?.message ?? error)
-      out.push(...chunk)
+      chunk.forEach((text, index) => { out[start + index] = text })
     }
-  }
-  return { paragraphs: out, translated: translated === chunks.length }
+  })
+  return { paragraphs: out.map((text, index) => text ?? paragraphs[index]), translated: done === chunks.length }
 }
 
 /**
  * 把一批原始标题翻成中文。返回 [{ titleZh, engine }]，顺序与输入一致；翻不出的项 titleZh 为空。
  */
-export async function translateTitles(texts, { ctx, signal, logger } = {}) {
+export async function translateTitles(texts, { ctx, signal, logger, cache } = {}) {
   const out = texts.map((text) => ({
     titleZh: looksChinese(text) ? String(text).trim() : '',
     engine: looksChinese(text) ? 'original' : null,
   }))
-  const todo = []
+  // 先查历史译文：同一个标题只翻一次，重复来源也能直接复用。
+  const byText = new Map()
   texts.forEach((text, index) => {
-    if (!out[index].titleZh) todo.push({ index, text: String(text) })
+    if (out[index].titleZh) return
+    const raw = String(text)
+    const cached = cache?.[hash(raw)]
+    if (cached) {
+      out[index] = { titleZh: cached, engine: 'cache' }
+      return
+    }
+    if (!byText.has(raw)) byText.set(raw, [])
+    byText.get(raw).push(index)
   })
-  if (!todo.length) return out
+  if (!byText.size) return out
 
-  const viaGoogle = await mapLimit(todo, TRANSLATE_CONCURRENCY, async (row) => {
+  const unique = [...byText.keys()]
+  const batches = []
+  for (let i = 0; i < unique.length; i += TRANSLATE_BATCH) batches.push(unique.slice(i, i + TRANSLATE_BATCH))
+
+  const translatedByText = new Map()
+  await mapLimit(batches, TRANSLATE_CHUNK_CONCURRENCY, async (batch) => {
     try {
-      return { ...row, titleZh: await googleOne(row.text, signal) }
+      const rows = await googleBatch(batch, signal)
+      batch.forEach((text, index) => {
+        const value = rows[index]
+        if (value) translatedByText.set(text, value)
+      })
     } catch {
-      return { ...row, titleZh: '' }
+      // 整批失败再逐条试，避免一条坏数据拖垮一批
+      await mapLimit(batch, TRANSLATE_CONCURRENCY, async (text) => {
+        try {
+          translatedByText.set(text, await googleOne(text, signal))
+        } catch {
+          /* 留给模型兜底 */
+        }
+      })
     }
   })
+
   const failed = []
-  for (const row of viaGoogle) {
-    if (row.titleZh) out[row.index] = { titleZh: row.titleZh, engine: 'google' }
-    else failed.push(row)
+  for (const [text, indexes] of byText) {
+    const value = translatedByText.get(text)
+    if (value) {
+      for (const index of indexes) out[index] = { titleZh: value, engine: 'google' }
+    } else {
+      for (const index of indexes) failed.push({ index, text })
+    }
   }
 
   if (failed.length && ctx) {
     try {
-      const translated = await llmTranslate(ctx, failed.map((row) => row.text), signal)
+      const translated = await llmTranslate(ctx, [...new Set(failed.map((row) => row.text))], signal)
       if (translated) {
-        failed.forEach((row, i) => {
-          const value = translated[i]
+        const uniqueFailed = [...new Set(failed.map((row) => row.text))]
+        failed.forEach((row) => {
+          const value = translated[uniqueFailed.indexOf(row.text)]
           if (value) out[row.index] = { titleZh: value, engine: 'llm' }
         })
       }
@@ -389,6 +466,7 @@ export class RadarFeed {
     this.loaded = false
     this.socialStatus = new Map()
     this.officialStatus = new Map()
+    this.translating = null
     this.ready = this.load()
   }
 
@@ -520,12 +598,12 @@ export class RadarFeed {
           collected: (result.collected || 0) + social.items.length + official.items.length,
           sources: [...(result.sources || []), ...social.sources, ...official.sources],
         })
-        if (this.config.translate) await this.translatePending()
         this.state.generatedAt = new Date().toISOString()
         this.state.lastError = null
         this.state.lastReason = reason
         this.state.nextRefreshAt = new Date(Date.now() + this.config.refreshMinutes * 60_000).toISOString()
         await this.save()
+        this.scheduleTranslate()
       } catch (error) {
         this.state.lastError = String(error?.message ?? error)
         this.state.nextRefreshAt = new Date(Date.now() + this.config.refreshMinutes * 60_000).toISOString()
@@ -764,13 +842,40 @@ export class RadarFeed {
   async translatePending() {
     const pending = this.state.items.filter((item) => !item.titleZh).slice(0, MAX_TRANSLATE_PER_CYCLE)
     if (!pending.length) return
-    const translated = await translateTitles(pending.map((item) => item.title), { ctx: this.ctx, logger: this.logger })
+    const translated = await translateTitles(pending.map((item) => item.title), {
+      ctx: this.ctx, logger: this.logger, cache: this.state.translations,
+    })
     pending.forEach((item, index) => {
       const row = translated[index]
       if (!row?.titleZh) return
       item.titleZh = row.titleZh
       this.state.translations[hash(item.title)] = row.titleZh
     })
+    const keys = Object.keys(this.state.translations)
+    if (keys.length > TRANSLATE_CACHE_LIMIT) {
+      for (const key of keys.slice(0, keys.length - TRANSLATE_CACHE_LIMIT)) delete this.state.translations[key]
+    }
+  }
+
+  /** 翻译放到后台跑，不挡刷新返回；积压多于一轮上限时连续补几轮。 */
+  scheduleTranslate() {
+    if (!this.config.translate || this.translating) return
+    this.translating = (async () => {
+      try {
+        for (let round = 0; round < 4; round += 1) {
+          const before = this.state.items.filter((item) => !item.titleZh).length
+          if (!before) break
+          await this.translatePending()
+          await this.save()
+          const after = this.state.items.filter((item) => !item.titleZh).length
+          if (after >= before) break
+        }
+      } catch (error) {
+        this.logger?.warn?.('auto-export-radar: 后台翻译失败：%s', error?.message ?? error)
+      } finally {
+        this.translating = null
+      }
+    })()
   }
 
   /** 面板/接口视角：按窗口、语种、主题、关键词、未读、收藏过滤。 */
@@ -833,6 +938,7 @@ export class RadarFeed {
       collected: this.state.collected,
       itemCount: items.length,
       untranslated: this.state.items.filter((item) => !item.titleZh).length,
+      translating: Boolean(this.translating),
       unreadCount,
       favoriteCount,
       watchlist: this.config.watchlist || [],
@@ -893,6 +999,7 @@ export class RadarFeed {
       .slice(0, 40)
     this.state.officialSources = rows
     this.officialStatus = new Map()
+    this.translating = null
     await this.save()
     return { officialSources: rows }
   }
@@ -1007,6 +1114,7 @@ export class RadarFeed {
     this.state.socialChannels = rows
     this.socialStatus = new Map()
     this.officialStatus = new Map()
+    this.translating = null
     await this.save()
     return { socialChannels: rows }
   }

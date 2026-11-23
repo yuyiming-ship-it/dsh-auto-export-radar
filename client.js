@@ -409,7 +409,8 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         if (!auto) return undefined
-        const delay = error ? 60000 : manualBusy || refreshing || emptyPool ? 4000 : 60000
+        const busy = manualBusy || refreshing || emptyPool || data?.translating
+        const delay = error ? 60000 : busy ? 4000 : 60000
         const id = setTimeout(() => { void load() }, delay)
         return () => clearTimeout(id)
       }, [auto, manualBusy, refreshing, emptyPool, error, data, load])
