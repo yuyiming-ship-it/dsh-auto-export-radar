@@ -41,6 +41,8 @@ window.__ModuleLoader__.load({
       healthOk: '{ok}/{total} 正常',
       healthFail: '{n} 个渠道本轮异常',
       langDist: '语种分布',
+      expand: '展开',
+      collapse: '隐藏',
       open: '打开原文',
       read: '在面板里读',
       untranslated: '待翻译',
@@ -153,6 +155,8 @@ window.__ModuleLoader__.load({
       healthOk: '{ok}/{total} responding',
       healthFail: '{n} channels failed this round',
       langDist: 'By language',
+      expand: 'Show',
+      collapse: 'Hide',
       open: 'Open original',
       read: 'Read here',
       untranslated: 'Pending translation',
@@ -783,19 +787,19 @@ window.__ModuleLoader__.load({
     }
 
     function SideRail({ t, data, visible, onCopy, copied, onMarkAll, hasUnread }) {
+      const [healthOpen, setHealthOpen] = React.useState(() => {
+        try { return localStorage.getItem('aer.rail.health') === '1' } catch { return false }
+      })
       if (!data) return null
       const langs = Object.entries(data.byLang || {}).sort((a, b) => b[1] - a[1])
       const total = langs.reduce((sum, row) => sum + row[1], 0) || 1
       const failed = data.channelHealth?.failed || []
+      const toggleHealth = () => setHealthOpen((open) => {
+        const next = !open
+        try { localStorage.setItem('aer.rail.health', next ? '1' : '0') } catch { /* 忽略隐私模式写入失败 */ }
+        return next
+      })
       return el('aside', { className: 'aer-rail' },
-        el('section', { className: 'aer-card' },
-          el('h2', null, t('health')),
-          el('p', { className: failed.length ? 'aer-health is-warn' : 'aer-health is-ok' },
-            failed.length ? fill(t('healthFail'), { n: failed.length }) : fill(t('healthOk'), { ok: data.channelHealth?.ok ?? 0, total: data.channelHealth?.total ?? 0 })),
-          failed.length
-            ? el('ul', { className: 'aer-fails' }, failed.slice(0, 6).map((row) => el('li', { key: row.name },
-              el('strong', null, row.name), row.error ? el('span', null, row.error) : null)))
-            : null),
         el('section', { className: 'aer-card' },
           el('h2', null, t('langDist')),
           el('ul', { className: 'aer-bars' }, langs.map(([code, count]) => el('li', { key: code },
@@ -808,7 +812,20 @@ window.__ModuleLoader__.load({
             el('span', null, fill(t('count'), { n: visible }))),
           el('button', { type: 'button', className: 'aer-btn is-wide', onClick: onCopy }, icon('copy', 15), el('span', null, copied ? t('copied') : t('copyDigest'))),
           hasUnread ? el('button', { type: 'button', className: 'aer-btn is-wide is-quiet', onClick: onMarkAll }, t('markAllRead')) : null,
-          el('p', { className: 'aer-note' }, t('onlyTitles'))))
+          el('p', { className: 'aer-note' }, t('onlyTitles'))),
+        el('section', { className: 'aer-card aer-card-health' },
+          el('div', { className: 'aer-card-head' },
+            el('h2', null, t('health')),
+            el('button', {
+              type: 'button', className: 'aer-toggle', onClick: toggleHealth,
+              'aria-expanded': healthOpen, title: healthOpen ? t('collapse') : t('expand'),
+            }, healthOpen ? t('collapse') : t('expand'))),
+          el('p', { className: failed.length ? 'aer-health is-warn' : 'aer-health is-ok' },
+            failed.length ? fill(t('healthFail'), { n: failed.length }) : fill(t('healthOk'), { ok: data.channelHealth?.ok ?? 0, total: data.channelHealth?.total ?? 0 })),
+          healthOpen && failed.length
+            ? el('ul', { className: 'aer-fails' }, failed.slice(0, 6).map((row) => el('li', { key: row.name },
+              el('strong', null, row.name), row.error ? el('span', null, row.error) : null)))
+            : null))
     }
 
     function ChannelsView({ t, data, onSaveFeeds, onSaveSocial, onSaveOfficial, onSaveWatch, onImport, importing, message }) {
@@ -1639,6 +1656,9 @@ window.__ModuleLoader__.load({
 .aer-card h2 { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 6px; }
 .aer-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .aer-card-head span { font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); }
+.aer-card-head .aer-toggle { margin-left: auto; }
+.aer-card-health { padding-bottom: 4px; }
+.aer-card-health .aer-health { margin-top: 6px; }
 .aer-health { margin-top: 8px; font-size: 13px; font-weight: 500; }
 .aer-health.is-ok { color: var(--ok); }
 .aer-health.is-warn { color: var(--warn); }
