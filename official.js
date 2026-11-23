@@ -132,6 +132,56 @@ export const OFFICIAL_SOURCES = [
   },
 ]
 
+/**
+ * 进口规则入口：用户给的各国海关 / 法规 / 公报 / 申报页面。
+ * 这些页面是查询与办事入口，没有 RSS，也没有"新闻列表"可抓，所以只作为一键入口展示，不进信息流。
+ * 想盯某一页的更新，用面板里的「添加官方页面」把它加成采集源。
+ */
+export const OFFICIAL_REFS = [
+  // 伊朗
+  { id: 'ir-qavanin', name: '伊朗法规库', region: '伊朗', kind: '法规', url: 'https://qavanin.ir/' },
+  { id: 'ir-dotic', name: '伊朗工矿贸易部', region: '伊朗', kind: '规则', url: 'https://dotic.ir/' },
+  { id: 'ir-rrk', name: '伊朗官方公报', region: '伊朗', kind: '公报', url: 'https://rrk.ir/' },
+  { id: 'ir-ntsw', name: '伊朗综合贸易系统', region: '伊朗', kind: '申报', url: 'https://www.ntsw.ir/' },
+  { id: 'ir-saleauto', name: '伊朗 Saleauto 车源', region: '伊朗', kind: '行情', url: 'https://janbazan.saleauto.ir/cars', note: '在售车源与价格，不是政策源' },
+  // 中亚 / 欧亚
+  { id: 'kz-kgd', name: '哈萨克斯坦国家收入委员会', region: '哈萨克斯坦', kind: '清关', url: 'https://kgd.gov.kz/' },
+  { id: 'kg-customs', name: '吉尔吉斯海关', region: '吉尔吉斯斯坦', kind: '清关', url: 'https://customs.gov.kg/' },
+  { id: 'eaeu-docs', name: '欧亚经济联盟文件库', region: '欧亚联盟', kind: '法规', url: 'https://docs.eaeunion.org/' },
+  { id: 'uz-lex', name: '乌兹别克法规库', region: '乌兹别克斯坦', kind: '法规', url: 'https://lex.uz/' },
+  { id: 'uz-customs', name: '乌兹别克海关申报', region: '乌兹别克斯坦', kind: '申报', url: 'https://sw2.customs.uz/' },
+  // 高加索
+  { id: 'ge-carclearance', name: '格鲁吉亚车辆清关计算', region: '格鲁吉亚', kind: '税费', url: 'https://www.rs.ge/CarClearance?tab=1' },
+  { id: 'ge-matsne', name: '格鲁吉亚立法公报', region: '格鲁吉亚', kind: '法规', url: 'https://matsne.gov.ge/' },
+  { id: 'az-customs', name: '阿塞拜疆海关 · 车辆进口', region: '阿塞拜疆', kind: '清关', url: 'https://customs.gov.az/az/ferdler-ucun/avtomobillerin-getirilmesi/' },
+  { id: 'am-exim', name: '亚美尼亚进出口平台 · 运输', region: '亚美尼亚', kind: '清关', url: 'https://exim.src.am/transport' },
+  // 俄罗斯
+  { id: 'ru-pravo', name: '俄联邦法令公布', region: '俄罗斯', kind: '公报', url: 'https://publication.pravo.gov.ru/' },
+  { id: 'ru-customs', name: '俄联邦海关', region: '俄罗斯', kind: '清关', url: 'https://customs.gov.ru/' },
+  // 中东
+  { id: 'sa-zatca-vehicle', name: '沙特海关 · 个人进口车辆', region: '沙特', kind: '清关', url: 'https://zatca.gov.sa/en/RulesRegulations/Taxes/Pages/customs-individual/import-vehicles.aspx' },
+  { id: 'ae-dubai-customs', name: '迪拜海关', region: '阿联酋', kind: '清关', url: 'https://www.dubaicustoms.gov.ae/' },
+  { id: 'ae-moiat-used', name: '阿联酋 MOIAT · 二手进口车状态证明', region: '阿联酋', kind: '认证', url: 'https://www.moiat.gov.ae/en/services/issue-product-status-statement-for-used-imported-vehicles' },
+  { id: 'tr-import-regime', name: '土耳其进口制度 FAQ', region: '土耳其', kind: '规则', url: 'https://www.trade.gov.tr/customs-formalities/frequently-asked-questions/import-regime' },
+  // 北非
+  { id: 'dz-joradp', name: '阿尔及利亚官方公报', region: '阿尔及利亚', kind: '公报', url: 'https://www.joradp.dz/' },
+  { id: 'dz-douane', name: '阿尔及利亚海关', region: '阿尔及利亚', kind: '清关', url: 'https://www.douane.gov.dz/' },
+  { id: 'ma-adil', name: '摩洛哥海关 ADIL 关税计算', region: '摩洛哥', kind: '税费', url: 'https://www.douane.gov.ma/adil/' },
+  { id: 'ma-mcv', name: '摩洛哥海关 MCV 车辆税则', region: '摩洛哥', kind: '税费', url: 'https://www.douane.gov.ma/mcv/' },
+  // 非洲其他
+  { id: 'ke-kra', name: '肯尼亚税务局', region: '肯尼亚', kind: '清关', url: 'https://www.kra.go.ke/' },
+  { id: 'ke-kebs', name: '肯尼亚标准局 KEBS', region: '肯尼亚', kind: '认证', url: 'https://www.kebs.org/' },
+  { id: 'za-used-vehicle', name: '南非 · 二手车进口', region: '南非', kind: '规则', url: 'https://www.gov.za/services/services-organisations/import/importing-second-hand-or-used-vehicle' },
+  // 拉美
+  { id: 'br-siscomex', name: '巴西 Siscomex 进口', region: '巴西', kind: '申报', url: 'https://www.gov.br/siscomex/pt-br/informacoes/importacao' },
+  { id: 'ar-importar', name: '阿根廷 · 进口', region: '阿根廷', kind: '规则', url: 'https://www.argentina.gob.ar/node/471857' },
+  { id: 'ar-boletin', name: '阿根廷官方公报', region: '阿根廷', kind: '公报', url: 'https://www.boletinoficial.gob.ar/' },
+  { id: 'pe-sunat-vehicles', name: '秘鲁 SUNAT · 车辆进口', region: '秘鲁', kind: '清关', url: 'https://www.sunat.gob.pe/customsinformation/importofvehicles/index.html' },
+  { id: 'pe-sunat-used', name: '秘鲁 SUNAT · 二手车进口规范', region: '秘鲁', kind: '规则', url: 'https://www.gob.pe/institucion/sunat/colecciones/678-normas-para-la-importacion-de-vehiculos-usados' },
+  { id: 'co-dian', name: '哥伦比亚 DIAN 海关手续', region: '哥伦比亚', kind: '清关', url: 'https://www.dian.gov.co/tramitesservicios/tramites-y-servicios/Paginas/tramites-aduaneros.aspx' },
+  { id: 'ec-aduana', name: '厄瓜多尔海关 · 进口指引', region: '厄瓜多尔', kind: '清关', url: 'https://www.aduana.gob.ec/servicio-al-ciudadano/para-importar/' },
+]
+
 function decodeEntities(input) {
   return String(input)
     .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))

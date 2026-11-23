@@ -7,7 +7,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { extractArticle } from './article.js'
 import { collect, EDITIONS, FEEDS, LOCALES, looksLikeAppliance } from './radar.js'
-import { OFFICIAL_SOURCES, fetchOfficialList } from './official.js'
+import { OFFICIAL_REFS, OFFICIAL_SOURCES, fetchOfficialList } from './official.js'
 import {
   PLATFORMS,
   SOCIAL_TEMPLATE,
@@ -807,6 +807,7 @@ export class RadarFeed {
 
   officialView() {
     return {
+      refs: OFFICIAL_REFS,
       sources: this.officialList().map((source) => ({
         id: source.id,
         name: source.name,

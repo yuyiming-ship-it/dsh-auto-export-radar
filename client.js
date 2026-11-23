@@ -63,6 +63,8 @@ window.__ModuleLoader__.load({
       officialUrlPlaceholder: '公告列表页地址',
       officialFilterPlaceholder: '关键词正则（可空）',
       officialBadge: '官方',
+      officialRefsTitle: '进口规则入口（{n} 个）',
+      officialRefsHint: '各国海关、法规、公报和申报页。它们没有 RSS，也没有可抓的公告列表，所以只做一键入口，不进信息流；想盯某一页的更新，把它填进上面的「添加官方页面」。',
       socialSources: '社交源（X / Facebook / Threads）',
       socialNotReady: '还没连。这三个平台没有免登录的公开读取通道，需要二选一：自建 RSSHub 桥，或填 X 官方 API 令牌。',
       socialBridgeReady: '已接自建桥：{base}',
@@ -170,6 +172,8 @@ window.__ModuleLoader__.load({
       officialUrlPlaceholder: 'Listing page URL',
       officialFilterPlaceholder: 'Keyword regex (optional)',
       officialBadge: 'Official',
+      officialRefsTitle: 'Import rule bookmarks ({n})',
+      officialRefsHint: 'Customs, legislation, gazettes and declaration portals. They have no RSS feed, so they are one-click bookmarks rather than a stream; to watch one for updates, add it under “Add an official page”.',
       socialSources: 'Social sources (X / Facebook / Threads)',
       socialNotReady: 'Not connected yet. None of these platforms allows anonymous server-side reading: either point the plugin at your own RSSHub bridge, or add an X API bearer token.',
       socialBridgeReady: 'Self-hosted bridge: {base}',
@@ -837,6 +841,16 @@ window.__ModuleLoader__.load({
 
       const official = data?.official || {}
       const officialSources = official.sources || []
+      const officialRefs = official.refs || []
+      const officialRegions = React.useMemo(() => {
+        const groups = new Map()
+        for (const ref of officialRefs) {
+          const region = ref.region || '其他'
+          if (!groups.has(region)) groups.set(region, [])
+          groups.get(region).push(ref)
+        }
+        return [...groups.entries()]
+      }, [officialRefs])
       const [offName, setOffName] = React.useState('')
       const [offUrl, setOffUrl] = React.useState('')
       const [offFilter, setOffFilter] = React.useState('')
@@ -923,6 +937,15 @@ window.__ModuleLoader__.load({
             el('input', { value: offFilter, placeholder: t('officialFilterPlaceholder'), onChange: (event) => setOffFilter(event.target.value), 'aria-label': t('officialFilterPlaceholder') }),
             el('button', { type: 'submit', className: 'aer-btn', disabled: !offUrl.trim() }, icon('plus', 14), el('span', null, t('officialAdd')))))
         ,
+        el('section', { className: 'aer-card' },
+          el('h2', null, fill(t('officialRefsTitle'), { n: officialRefs.length })),
+          el('p', { className: 'aer-note' }, t('officialRefsHint')),
+          officialRegions.map(([region, rows]) => el('div', { key: region, className: 'aer-ref-group' },
+            el('div', { className: 'aer-ref-region' }, region),
+            el('ul', { className: 'aer-ref-list' }, rows.map((ref) => el('li', { key: ref.id },
+              el('a', { className: 'aer-ref', href: ref.url, target: '_blank', rel: 'noreferrer noopener', title: ref.note || ref.url },
+                el('span', { className: 'aer-ref-name' }, ref.name),
+                el('span', { className: 'aer-ref-kind' }, ref.kind)))))))),
         el('section', { className: 'aer-card' },
           el('h2', null, t('channelsFeeds')),
           el('ul', { className: 'aer-channel-list' }, feeds.map((feed) => {
@@ -1636,6 +1659,14 @@ window.__ModuleLoader__.load({
   font-size: 12px; line-height: 1.7; resize: vertical; outline: none;
 }
 .aer-textarea:focus { border-color: var(--ink); }
+.aer-ref-group { margin-top: 10px; }
+.aer-ref-region { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; color: var(--ink-3); padding-bottom: 4px; border-bottom: 1px solid var(--line-subtle); }
+.aer-ref-list { display: flex; flex-direction: column; }
+.aer-ref { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line-subtle); }
+.aer-ref:last-child { border-bottom: 0; }
+.aer-ref:hover .aer-ref-name { text-decoration: underline; text-underline-offset: 2px; }
+.aer-ref-name { font-size: 11.5px; color: var(--ink-body); }
+.aer-ref-kind { margin-left: auto; font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--ink-3); border: 1px solid var(--line); padding: 0 4px; flex: none; }
 .aer-field { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
 .aer-field span { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
 .aer-field input { height: 30px; padding: 0 9px; border: 1px solid var(--line); background: var(--paper); font-size: 12px; min-width: 0; outline: none; }
