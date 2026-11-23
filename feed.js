@@ -73,6 +73,14 @@ export function looksChinese(text) {
   return cjk / letters.length > 0.35
 }
 
+function hardTimeout(promise, ms, label) {
+  let timer
+  const guard = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms)
+  })
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer))
+}
+
 function mapLimit(items, limit, worker) {
   const out = new Array(items.length)
   let cursor = 0
@@ -582,16 +590,21 @@ export class RadarFeed {
   refresh(reason = 'manual') {
     if (this.running) return this.running
     this.running = (async () => {
+      const startedAt = Date.now()
       try {
         await this.ready
-        const result = await collect({
-          hours: this.config.windowHours,
-          limit: 220,
-          langs: ['all'],
-          mode: 'all',
-          feeds: this.feedList(),
-        })
-        const [social, official] = await Promise.all([this.collectSocial(), this.collectOfficial()])
+        // 新闻/RSS、社交、官方页三路互不依赖，一起发；总时长取最慢的一路
+        const [result, social, official] = await Promise.all([
+          collect({
+            hours: this.config.windowHours,
+            limit: 220,
+            langs: ['all'],
+            mode: 'all',
+            feeds: this.feedList(),
+          }),
+          this.collectSocial(),
+          this.collectOfficial(),
+        ])
         this.merge({
           ...result,
           items: [...(result.items || []), ...social.items, ...official.items],
@@ -602,6 +615,7 @@ export class RadarFeed {
         this.state.lastError = null
         this.state.lastReason = reason
         this.state.nextRefreshAt = new Date(Date.now() + this.config.refreshMinutes * 60_000).toISOString()
+        this.state.lastRefreshMs = Date.now() - startedAt
         await this.save()
         this.scheduleTranslate()
       } catch (error) {
@@ -655,7 +669,12 @@ export class RadarFeed {
       .slice(0, POOL_MAX)
     this.state.items = items
     this.state.collected = result.collected ?? items.length
-    this.state.sources = Array.isArray(result.sources) ? result.sources : []
+    // 官方源现在单独在后台跑：按名字合并状态，别把上一批渠道（新闻/RSS 或官方）整组冲掉
+    if (Array.isArray(result.sources)) {
+      const merged = new Map(this.state.sources.map((row) => [row.name, row]))
+      for (const row of result.sources) merged.set(row.name, row)
+      this.state.sources = [...merged.values()]
+    }
   }
 
   /** 官方信源：内置清单 + 自己加的页面。 */
@@ -704,14 +723,14 @@ export class RadarFeed {
     const now = new Date().toISOString()
     if (!sources.length) return { items, sources: sourcesOut }
     const seen = new Set()
-    await mapLimit(sources, 3, async (source) => {
+    await mapLimit(sources, 6, async (source) => {
       if (source.watch && !this.watchEnabled(source)) {
         sourcesOut.push({ name: source.name, ok: true, items: 0, error: null, lang: source.lang, official: true, watch: true, paused: true, note: source.note || '已暂停' })
         this.officialStatus.set(source.id, { ok: true, items: 0, error: null, at: now, watch: true, paused: true, note: source.note || '已暂停' })
         return
       }
       try {
-        const rows = await fetchOfficialList(source)
+        const rows = await hardTimeout(fetchOfficialList(source), 15000, `${source.name} `)
         let kept = 0
         if (source.watch) {
           const previous = Array.isArray(this.state.officialSeen?.[source.id]) ? this.state.officialSeen[source.id] : null
@@ -939,6 +958,7 @@ export class RadarFeed {
       itemCount: items.length,
       untranslated: this.state.items.filter((item) => !item.titleZh).length,
       translating: Boolean(this.translating),
+      lastRefreshMs: this.state.lastRefreshMs || null,
       unreadCount,
       favoriteCount,
       watchlist: this.config.watchlist || [],

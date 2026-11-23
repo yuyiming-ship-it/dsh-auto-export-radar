@@ -7,7 +7,8 @@ const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 const GOOGLE_NEWS = 'https://news.google.com/rss/search';
-const CONCURRENCY = 6;
+const CONCURRENCY = 12;
+const GOOGLE_CONCURRENCY = 6;
 const PER_SOURCE_TIMEOUT_MS = 15000;
 
 /** 语种 → 面板上的语言标签；真正的采集单元是下面的 EDITIONS。 */
@@ -292,16 +293,24 @@ function countMatches(text, terms) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** 一次性抓取文本；429/5xx 时退避重试，新闻订阅偶发限流不该被记成渠道故障。 */
+function hardTimeout(promise, ms, label) {
+  let timer
+  const guard = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms)
+  })
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer))
+}
+
 async function fetchText(url, timeoutMs, attempts = 1) {
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const res = await fetch(url, {
+      const res = await hardTimeout(fetch(url, {
         headers: { 'user-agent': UA, accept: 'application/rss+xml, application/xml, text/xml, */*' },
         redirect: 'follow',
         signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (res.ok) return await res.text();
+      }), timeoutMs + 2000, 'fetch');
+      if (res.ok) return await hardTimeout(res.text(), timeoutMs + 2000, 'body');
       lastError = new Error(`HTTP ${res.status}`);
       if (res.status !== 429 && res.status < 500) throw lastError;
     } catch (error) {
@@ -483,8 +492,11 @@ export async function collect(options = {}) {
   };
 
   // Google News 单独一波、并发更低：一次并发 20+ 个本地版会触发 429。
-  const googleRaw = await mapLimit(jobs.filter((job) => job.kind === 'google'), 4, runJob);
-  const feedRaw = await mapLimit(jobs.filter((job) => job.kind !== 'google'), CONCURRENCY, runJob);
+  // Google News 与 RSS 互不依赖，并行跑，总时长取较慢的一组
+  const [googleRaw, feedRaw] = await Promise.all([
+    mapLimit(jobs.filter((job) => job.kind === 'google'), GOOGLE_CONCURRENCY, runJob),
+    mapLimit(jobs.filter((job) => job.kind !== 'google'), CONCURRENCY, runJob),
+  ]);
   const raw = [...googleRaw, ...feedRaw];
 
   const now = Date.now();
