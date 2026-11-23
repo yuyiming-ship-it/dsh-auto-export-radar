@@ -25,6 +25,8 @@ auto_export_radar({ langs: ['ja','ko'], query: '中国車 輸出' })
 
 ## 2. 渠道分层（工具已覆盖的 + 必须手工补的）
 
+**面板还有 14 个官方信源**（欧盟、USTR、俄工贸部、欧亚经济委员会、哈萨克斯坦工贸部、土耳其贸易部、巴西 MDIC、摩洛哥海关、埃及 GOEIC、印度 DGFT、泰国海关、日本经产省、南非 ITAC、中国商务部），按列表页 + 关键词抓公告。这些只进面板、不进 `auto_export_radar` 工具；需要官方原文时用 `web_fetch` 打开面板里的链接。伊朗官方站点（irica.ir / mimt.gov.ir / rrk.ir）从常见海外网络连不上，伊朗政策暂时靠 IRNA / ISNA / Mehr / Donya 覆盖，或让用户在面板里自填可访问的官方地址。
+
 **工具内已接**：15 个语种 / 26 个 Google News 本地版（中文、英/全球、日、韩、德、阿语 5 个市场：沙特/阿联酋/埃及/摩洛哥/科威特、波斯语、法语 3 个：法国/摩洛哥/科特迪瓦、俄语 4 个：俄罗斯/哈萨克斯坦/乌兹别克斯坦/白俄罗斯、西语 3 个：墨西哥/西班牙/智利、葡语、泰语、越南语、印尼语、土耳其语）+ 56 个 RSS（英文垂类 CarNewsChina/CnEVPost/Electrek/InsideEVs/Electrive/Nikkei/Paultan；阿语 ArabGT/Assayyarat/Almuraba/Cairo24/Sky News عربية/الجزيرة/CNN عربية；俄语 Kolesa/5 колесо/Ведомости·авто/Lenta/NaAvtotrasse/Zamin.uz；波斯语 Pedal/Zoomit/Digiato/دنیای اقتصاد/ایسنا/عصر خودرو/اقتصاد آنلاین/خبرآنلاین/همشهری/مهر/ایرنا/ایلنا/عصر ایران/تابناک/مشرق/تجارت نیوز/گجت نیوز/تک رسا；法语 Automobile Propre/Le Blog Auto/Auto Plus/Auto Moto/Journal Auto/Motors Actu/FrAndroid；另有 Motor.es、Quatro Rodas、Headlight Mag、Autonetmagz、Detik、VnExpress、Thanh Nien、Yonhap、Arab News）。
 
 波斯语提醒：Google News 的波斯语索引很弱，伊朗本地 RSS 才是主力；伊朗媒体关于中国车的日更量本身不大（10–30 条属正常）。俄语要看的不止俄罗斯——哈萨克斯坦/乌兹别克斯坦/白俄罗斯的本地报道往往比俄本土更早披露建厂与 KD 项目。
