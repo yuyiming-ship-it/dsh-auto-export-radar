@@ -76,6 +76,15 @@ export function looksChinese(text) {
   return cjk / letters.length > 0.35
 }
 
+/** 整轮采集的看门狗：到点就放弃本轮，把错误写进状态，别让面板一直转圈。 */
+function withDeadline(promise, ms, message) {
+  let timer
+  const guard = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(message), { code: 'REFRESH_TIMEOUT' })), ms)
+  })
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer))
+}
+
 function hardTimeout(promise, ms, label) {
   let timer
   const guard = new Promise((_, reject) => {
@@ -413,6 +422,7 @@ function normalizeSaved(saved) {
   state.officialWatch = isPlainObject(saved.officialWatch) ? saved.officialWatch : {}
   state.officialSeen = isPlainObject(saved.officialSeen) ? saved.officialSeen : {}
   state.sourceLatency = isPlainObject(saved.sourceLatency) ? saved.sourceLatency : {}
+  state.rounds = Number.isFinite(saved.rounds) ? saved.rounds : 0
   state.officialSources = Array.isArray(saved.officialSources)
     ? saved.officialSources
         .filter((row) => isPlainObject(row) && typeof row.url === 'string' && /^https?:\/\//i.test(row.url))
@@ -595,6 +605,9 @@ export class RadarFeed {
   /** 刷一轮：采集 → 合并 → 翻译新条目 → 落盘。并发调用复用同一次执行。 */
   refresh(reason = 'manual') {
     if (this.running) return this.running
+    this.state.lastRefreshStartedAt = new Date().toISOString()
+    this.state.lastRefreshReason = reason
+    void this.save()
     this.running = (async () => {
       const startedAt = Date.now()
       try {
@@ -602,7 +615,8 @@ export class RadarFeed {
         this.state.rounds = (this.state.rounds || 0) + 1
         const slowNames = this.slowSources()
         // 新闻/RSS、社交、官方页三路互不依赖，一起发；总时长取最慢的一路
-        const [result, social, official] = await Promise.all([
+        // 整轮最多 120 秒，超时放弃本轮并记错误，避免面板一直卡在“正在抓取”
+        const [result, social, official] = await withDeadline(Promise.all([
           collect({
             hours: this.config.windowHours,
             limit: 220,
@@ -615,7 +629,7 @@ export class RadarFeed {
           }),
           this.collectSocial(),
           this.collectOfficial(),
-        ])
+        ]), 120000, '本轮采集超过 120 秒，已放弃；下轮再试')
         this.recordLatency(result.sources)
         this.merge({
           ...result,
@@ -1013,6 +1027,8 @@ export class RadarFeed {
       untranslated: this.state.items.filter((item) => !item.titleZh).length,
       translating: Boolean(this.translating),
       lastRefreshMs: this.state.lastRefreshMs || null,
+      refreshStartedAt: this.state.lastRefreshStartedAt || null,
+      refreshReason: this.state.lastRefreshReason || null,
       markets: MARKETS.map((market) => ({ id: market.id, name: market.name, group: market.group })),
       unreadCount,
       favoriteCount,

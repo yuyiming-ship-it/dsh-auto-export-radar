@@ -630,7 +630,7 @@ window.__ModuleLoader__.load({
       }, icon(name, 15))
     }
 
-    function Header({ t, tabs, data, auto, setAuto, onRefresh, busy, manualBusy }) {
+    function Header({ t, tabs, data, auto, setAuto, onRefresh, busy, manualBusy, elapsed }) {
       const updated = data?.generatedAt ? clock(data.generatedAt) : null
       const next = data?.nextRefreshAt ? clock(data.nextRefreshAt) : null
       return el('header', { className: 'aer-head' },
@@ -646,7 +646,7 @@ window.__ModuleLoader__.load({
             type: 'button', className: manualBusy ? 'aer-btn is-busy' : 'aer-btn', onClick: onRefresh,
             disabled: manualBusy, title: t('refresh'),
             'aria-busy': manualBusy ? 'true' : 'false',
-          }, icon('refresh', 15), el('span', null, manualBusy ? t('refreshing') : t('refresh'))),
+          }, icon('refresh', 15), el('span', null, manualBusy ? `${t('refreshing')} ${elapsed}s` : t('refresh'))),
           el('button', {
             type: 'button', className: auto ? 'aer-switch is-on' : 'aer-switch',
             role: 'switch', 'aria-checked': auto, title: t('auto'),
@@ -1223,6 +1223,14 @@ window.__ModuleLoader__.load({
       const [topic, setTopic] = React.useState(null)
       const [query, setQuery] = React.useState('')
       const [unreadOnly, setUnreadOnly] = React.useState(false)
+      const [elapsed, setElapsed] = React.useState(0)
+      React.useEffect(() => {
+        if (!radar.manualBusy) { setElapsed(0); return undefined }
+        const startedAt = Date.now()
+        const id = setInterval(() => setElapsed(Math.round((Date.now() - startedAt) / 1000)), 1000)
+        return () => clearInterval(id)
+      }, [radar.manualBusy])
+
       const [marketOnly, setMarketOnly] = React.useState(() => {
         try { return localStorage.getItem('aer.marketOnly') !== '0' } catch { return true }
       })
@@ -1460,6 +1468,7 @@ window.__ModuleLoader__.load({
           onRefresh: radar.refreshNow,
           busy,
           manualBusy: radar.manualBusy,
+          elapsed,
         }),
         el('div', { className: `aer-body ${showReader ? 'has-reader' : ''}` },
           body,
