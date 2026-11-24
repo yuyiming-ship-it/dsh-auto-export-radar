@@ -84,6 +84,14 @@ export const EDITIONS = [
 
 /** 已实测可用的行业垂类 RSS：补充深度稿与一手信源（Google News 之外的第二层渠道）。 */
 export const FEEDS = [
+  // 目标市场本地媒体（按用户市场补充）
+  { name: 'Punch Nigeria', url: 'https://punchng.com/feed/', lang: 'en', region: '尼日利亚' },
+  { name: 'MyJoyOnline', url: 'https://www.myjoyonline.com/feed/', lang: 'en', region: '加纳' },
+  { name: 'Notes from Poland', url: 'https://notesfrompoland.com/feed/', lang: 'en', region: '波兰' },
+  { name: 'Kyiv Post', url: 'https://www.kyivpost.com/feed', lang: 'en', region: '乌克兰' },
+  { name: 'Civil Georgia', url: 'https://civil.ge/feed/', lang: 'en', region: '格鲁吉亚' },
+  { name: 'Trend AZ', url: 'https://en.trend.az/rss/', lang: 'en', region: '阿塞拜疆' },
+  { name: 'RPP Peru', url: 'https://rpp.pe/feed/', lang: 'es', region: '秘鲁' },
   // 英文 / 全球
   { name: 'CarNewsChina', url: 'https://carnewschina.com/feed/', lang: 'en', region: 'Global' },
   { name: 'CnEVPost', url: 'https://cnevpost.com/feed/', lang: 'en', region: 'Global' },
@@ -93,12 +101,9 @@ export const FEEDS = [
   { name: 'Electrek', url: 'https://electrek.co/feed/', lang: 'en', region: 'Global' },
   { name: 'Electrive', url: 'https://www.electrive.com/feed/', lang: 'en', region: '德国/欧洲' },
   { name: 'Nikkei Asia', url: 'https://asia.nikkei.com/rss/feed/nar', lang: 'en', region: '亚洲' },
-  { name: 'Paultan.org', url: 'https://www.paultan.org/feed/', lang: 'en', region: '东南亚' },
   // 阿语：垂直门户 + 埃及 / 沙特 / 海湾
   { name: 'ArabGT', url: 'https://arabgt.com/feed/', lang: 'ar', region: '中东' },
   { name: 'Assayyarat', url: 'https://www.assayyarat.com/rss', lang: 'ar', region: '阿语区' },
-  { name: 'Almuraba', url: 'https://www.almuraba.net/feed', lang: 'ar', region: '沙特' },
-  { name: 'Cairo24 汽车', url: 'https://www.cairo24.com/rss.aspx?section=14', lang: 'ar', region: '埃及' },
   { name: 'Sky News عربية', url: 'https://www.skynewsarabia.com/rss', lang: 'ar', region: '海湾' },
   { name: 'الجزيرة اقتصاد', url: 'https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779', lang: 'ar', region: '阿语区' },
   { name: 'CNN عربية', url: 'https://arabic.cnn.com/rss', lang: 'ar', region: '阿语区' },
@@ -130,22 +135,7 @@ export const FEEDS = [
   { name: 'گجت نیوز', url: 'https://gadgetnews.ir/feed', lang: 'fa', region: '伊朗' },
   { name: 'تک رسا', url: 'https://techrasa.com/feed/', lang: 'fa', region: '伊朗' },
   // 法语：电动车垂直 + 门户 + 行业 B2B + 北非/西非
-  { name: 'Automobile Propre', url: 'https://www.automobile-propre.com/feed/', lang: 'fr', region: '法国' },
-  { name: 'Le Blog Auto', url: 'https://www.leblogauto.com/feed/', lang: 'fr', region: '法国' },
-  { name: 'Auto Plus', url: 'https://www.autoplus.fr/feed/', lang: 'fr', region: '法国' },
-  { name: 'Auto Moto', url: 'https://www.auto-moto.com/feed/', lang: 'fr', region: '法国' },
-  { name: 'Journal Auto', url: 'https://www.journalauto.com/rss', lang: 'fr', region: '法国' },
-  { name: 'Motors Actu', url: 'https://www.motorsactu.com/feed/', lang: 'fr', region: '摩洛哥/北非' },
-  { name: 'FrAndroid', url: 'https://www.frandroid.com/feed', lang: 'fr', region: '法国' },
   // 西语 / 葡语 / 东南亚
-  { name: 'Motor.es', url: 'https://www.motor.es/feed/', lang: 'es', region: '西班牙' },
-  { name: 'Quatro Rodas', url: 'https://quatrorodas.abril.com.br/feed/', lang: 'pt', region: '巴西' },
-  { name: 'Headlight Mag', url: 'https://www.headlightmag.com/feed/', lang: 'th', region: '泰国' },
-  { name: 'Autonetmagz', url: 'https://autonetmagz.com/feed/', lang: 'id', region: '印尼' },
-  { name: 'Detik Oto', url: 'https://oto.detik.com/rss', lang: 'id', region: '印尼' },
-  { name: 'VnExpress 汽车', url: 'https://vnexpress.net/rss/oto-xe-may.rss', lang: 'vi', region: '越南' },
-  { name: 'Thanh Nien 汽车', url: 'https://thanhnien.vn/rss/xe.rss', lang: 'vi', region: '越南' },
-  { name: 'Yonhap 产业', url: 'https://www.yna.co.kr/rss/industry.xml', lang: 'ko', region: '韩国' },
 ];
 
 /** 中国品牌 / 中国车相关词：多语种写法，用于判定“这条是不是中国车出海相关”。 */
@@ -435,10 +425,10 @@ const SIGNAL_BRAND = /(byd|chery|geely|changan|great wall|gwm|haval|jetour|omoda
 const SIGNAL_VEH = /(car|cars|vehicle|vehicles|auto|automobile|automotive|carro|vehículo|coche|voiture|véhicule|veículo|авто|автомоб|машин|سيار|مركب|خودرو|otomobil|araç|taşıt|ô tô|xe hơi|รถยนต์|自動車|자동차)/i
 
 const SIGNAL_RULES = [
-  { kind: '关税', a: /(关税|tariff|tariffs|duty|duties|تعرفه|пошлин|gümrük|vergi|arancel|imposto|ภาษี|thuế|関税|관세|droit de douane)/i, b: /(上调|下调|加征|提高|降低|豁免|调整|削减|翻倍|hike|raised|raise|slashed|slash|impose|imposed|reduce|reduced|double|exempt|تغییر|افزایش|کاهش|повыш|сниж|artır|indir|zam|aument|reduz|引き上げ|引き下げ|인상|인하)/i },
-  { kind: '进口政策', a: /(进口|进口车|import|imports|واردات|импорт|ithalat|importación|importação|nhập khẩu|นำเข้า|輸入|수입)/i, b: /(政策|新规|限制|禁令|配额|许可|收紧|放开|暂停|禁止|ban|banned|restrict|quota|licen|policy|rule|tighten|suspend|prohibit|ممنوع|سهمیه|запрет|квот|yasak|prohibición|cupo|hạn ngạch|規制|금지)/i },
-  { kind: '建厂/KD', a: /(建厂|工厂|组装|装配|散件|投产|产能|合资|代工|plant|factory|assembly|KD\b|CKD|joint venture|localiz|کارخانه|مونتاژ|завод|сборк|fabrika|montaj|planta|fábrica|ensambl|usine|assemblagem)/i, need: 'china' },
-  { kind: '渠道', a: /(经销|代理|分销|授权|门店|售后|dealer|distributor|importer|showroom|retail network|aftersales|after-sales|نمایندگی|дилер|дистрибьютор|distribütör|bayi|concesionario|distribuidor|concessionnaire)/i, b: /(签|合作|开店|设点|招募|授权|扩展|布局|opens|opens up|signs|appoints|partners|partnered|expands|network|launch|成立|build|jointly)/i, need: 'china' },
+  { kind: '关税', a: /(关税|tariff|tariffs|duty|duties|تعرفه|пошлин|gümrük|vergi|arancel|imposto|ภาษี|thuế|関税|관세|droit de douane|cło|мито|մաքս|განბაჟ|гааль|doganë|dogana|celní)/i, b: /(上调|下调|加征|提高|降低|豁免|调整|削减|翻倍|hike|raised|raise|slashed|slash|impose|imposed|reduce|reduced|double|exempt|تغییر|افزایش|کاهش|повыш|сниж|artır|indir|zam|aument|reduz|引き上げ|引き下げ|인상|인하)/i },
+  { kind: '进口政策', a: /(进口|进口车|import|imports|واردات|импорт|ithalat|importación|importação|nhập khẩu|นำเข้า|輸入|수입|ներմուծում|იმპორტი|importim|przywóz)/i, b: /(政策|新规|限制|禁令|配额|许可|收紧|放开|暂停|禁止|ban|banned|restrict|quota|licen|policy|rule|tighten|suspend|prohibit|ممنوع|سهمیه|запрет|квот|yasak|prohibición|cupo|hạn ngạch|規制|금지)/i },
+  { kind: '建厂/KD', a: /(建厂|工厂|组装|装配|散件|投产|产能|合资|代工|plant|factory|assembly|KD\b|CKD|joint venture|localiz|کارخانه|مونتاژ|завод|сборк|fabrika|montaj|planta|fábrica|ensambl|usine|assemblagem|ქარხანა|գործարան|fabryka|zavod)/i, need: 'china' },
+  { kind: '渠道', a: /(经销|代理|分销|授权|门店|售后|dealer|distributor|importer|showroom|retail network|aftersales|after-sales|نمایندگی|дилер|дистрибьютор|distribütör|bayi|concesionario|distribuidor|concessionnaire|diler|dilers)/i, b: /(签|合作|开店|设点|招募|授权|扩展|布局|opens|opens up|signs|appoints|partners|partnered|expands|network|launch|成立|build|jointly)/i, need: 'china' },
   { kind: '物流', a: /(海运|滚装|港口|运价|清关|拥堵|航线|ro-?ro|shipping|freight|container|port congestion|customs clearance|logistics|vessel|بندر|порт|логистик|фрахт|liman|navlun|puerto|flete|port|fret)/i, b: /(出口|进口|export|import|运价|运费|涨价|下跌|延误|拥堵|清关|car carrier|vehicle shipment|装载|航线)/i, need: 'veh' },
   { kind: '禁售/召回', a: /(禁售|禁止销售|召回|处罚|罚款|侵权|诉讼|法院|banned|ban\b|recall|recalled|fine|penalty|penalized|infringement|lawsuit|court|non-?compliant|فراخوان|ممنوع|جریمه|отзыв|запрет|штраф|geri çağırma|ceza|yasak|retirada|multa|prohibición|rappel|amende|interdiction)/i, need: 'brand' },
   { kind: '补贴/税收', a: /(补贴|激励|免税|购置税|消费税|退税|减税|incentive|subsidy|rebate|tax break|VAT|SCT|ÖTV|duty-?free|یارانه|معافیت|субсиди|льгот|teşvik|indirim|incentivo|subvención|subvention|exonération)/i, need: 'veh' },
@@ -473,12 +463,111 @@ export function classifySignal(item) {
   return { score: policy ? 3 : kinds.length >= 2 ? 3 : 2, kinds }
 }
 
+/* ------------------------------------------------------------------ */
+/* 目标市场：用户自己列的 32 个国家，用于采集、打标和过滤              */
+/* ------------------------------------------------------------------ */
+
+const MARKET_QUERIES = {
+  ar: ['سيارات صينية', 'استيراد سيارات'],
+  ru: ['китайские автомобили', 'импорт автомобилей'],
+  hy: ['չինական մեքենաներ'],
+  ka: ['ჩინური მანქანები'],
+  az: ['Çin avtomobilləri'],
+  pl: ['chińskie samochody'],
+  uk: ['китайські автомобілі'],
+  sq: ['makina kineze'],
+  mn: ['хятад автомашин'],
+  es: ['autos chinos', 'importación de autos'],
+  pt: ['carros chineses'],
+  en: ['Chinese cars', 'car imports'],
+  fr: ['voitures chinoises'],
+  fa: ['خودرو چینی'],
+  tr: ['Çin araçları'],
+  ja: ['中国車'],
+  ko: ['중국 자동차'],
+  de: ['chinesische Autos'],
+  th: ['รถยนต์จีน'],
+  vi: ['xe Trung Quốc'],
+  id: ['mobil China'],
+}
+
+/** 目标市场：group 用于分组展示，aliases 用于从标题里认出国家。 */
+export const MARKETS = [
+  { id: 'ae', name: '阿联酋', group: '中东', lang: 'ar', gl: 'AE', ceid: 'AE:ar', aliases: ['阿联酋', 'UAE', 'United Arab Emirates', 'Dubai', '迪拜', 'الإمارات', 'دبي'] },
+  { id: 'jo', name: '约旦', group: '中东', lang: 'ar', gl: 'JO', ceid: 'JO:ar', aliases: ['约旦', 'Jordan', 'Amman', '安曼', 'الأردن', 'عمان'] },
+  { id: 'ir', name: '伊朗', group: '中东', lang: 'fa', gl: 'IR', ceid: 'IR:fa', aliases: ['伊朗', 'Iran', 'Tehran', '德黑兰', 'ایران', 'تهران'] },
+  { id: 'iq', name: '伊拉克', group: '中东', lang: 'ar', gl: 'IQ', ceid: 'IQ:ar', aliases: ['伊拉克', 'Iraq', 'Baghdad', '巴格达', 'العراق', 'بغداد'] },
+  { id: 'sy', name: '叙利亚', group: '中东', lang: 'ar', gl: 'SY', ceid: 'SY:ar', aliases: ['叙利亚', 'Syria', 'Damascus', '大马士革', 'سوريا', 'دمشق'] },
+  { id: 'lb', name: '黎巴嫩', group: '中东', lang: 'ar', gl: 'LB', ceid: 'LB:ar', aliases: ['黎巴嫩', 'Lebanon', 'Beirut', '贝鲁特', 'لبنان', 'بيروت'] },
+  { id: 'sa', name: '沙特', group: '中东', lang: 'ar', gl: 'SA', ceid: 'SA:ar', aliases: ['沙特', 'Saudi', 'Riyadh', '利雅得', 'السعودية', 'الرياض'] },
+  { id: 'om', name: '阿曼', group: '中东', lang: 'ar', gl: 'OM', ceid: 'OM:ar', aliases: ['阿曼', 'Oman', 'Muscat', '马斯喀特', 'عمان', 'مسقط'] },
+  { id: 'kz', name: '哈萨克斯坦', group: '中亚', lang: 'ru', gl: 'KZ', ceid: 'KZ:ru', aliases: ['哈萨克斯坦', 'Kazakhstan', 'Almaty', '阿拉木图', 'Казахстан', 'Алматы'] },
+  { id: 'uz', name: '乌兹别克斯坦', group: '中亚', lang: 'ru', gl: 'UZ', ceid: 'UZ:ru', aliases: ['乌兹别克斯坦', 'Uzbekistan', 'Tashkent', '塔什干', 'Узбекистан', 'Ташкент'] },
+  { id: 'kg', name: '吉尔吉斯斯坦', group: '中亚', lang: 'ru', gl: 'KG', ceid: 'KG:ru', aliases: ['吉尔吉斯斯坦', '吉尔吉斯', 'Kyrgyzstan', 'Bishkek', '比什凯克', 'Кыргызстан', 'Бишкек'] },
+  { id: 'am', name: '亚美尼亚', group: '高加索', lang: 'hy', gl: 'AM', ceid: 'AM:hy', aliases: ['亚美尼亚', 'Armenia', 'Yerevan', '埃里温', 'Հայաստան', 'Երևան'] },
+  { id: 'ge', name: '格鲁吉亚', group: '高加索', lang: 'ka', gl: 'GE', ceid: 'GE:ka', aliases: ['格鲁吉亚', 'Georgia', 'Tbilisi', '第比利斯', 'საქართველო', 'თბილისი'] },
+  { id: 'az', name: '阿塞拜疆', group: '高加索', lang: 'az', gl: 'AZ', ceid: 'AZ:az', aliases: ['阿塞拜疆', 'Azerbaijan', 'Baku', '巴库', 'Azərbaycan', 'Bakı'] },
+  { id: 'ru', name: '俄罗斯', group: '俄罗斯', lang: 'ru', gl: 'RU', ceid: 'RU:ru', aliases: ['俄罗斯', 'Russia', 'Moscow', '莫斯科', 'Россия', 'Москва'] },
+  { id: 'dz', name: '阿尔及利亚', group: '非洲', lang: 'ar', gl: 'DZ', ceid: 'DZ:ar', aliases: ['阿尔及利亚', 'Algeria', 'Algiers', '阿尔及尔', 'الجزائر'] },
+  { id: 'dj', name: '吉布提', group: '非洲', lang: 'fr', gl: 'DJ', ceid: 'DJ:fr', aliases: ['吉布提', 'Djibouti', 'Djibouti city', 'جيبوتي'] },
+  { id: 'et', name: '埃塞俄比亚', group: '非洲', lang: 'en', gl: 'ET', ceid: 'ET:en', aliases: ['埃塞俄比亚', 'Ethiopia', 'Addis Ababa', '亚的斯亚贝巴', 'ኢትዮጵያ'] },
+  { id: 'ma', name: '摩洛哥', group: '非洲', lang: 'fr', gl: 'MA', ceid: 'MA:fr', aliases: ['摩洛哥', 'Morocco', 'Casablanca', '卡萨布兰卡', 'المغرب', 'Maroc'] },
+  { id: 'ng', name: '尼日利亚', group: '非洲', lang: 'en', gl: 'NG', ceid: 'NG:en', aliases: ['尼日利亚', 'Nigeria', 'Lagos', '拉各斯', 'Abuja'] },
+  { id: 'gh', name: '加纳', group: '非洲', lang: 'en', gl: 'GH', ceid: 'GH:en', aliases: ['加纳', 'Ghana', 'Accra', '阿克拉'] },
+  { id: 'ao', name: '安哥拉', group: '非洲', lang: 'pt', gl: 'AO', ceid: 'AO:pt', aliases: ['安哥拉', 'Angola', 'Luanda', '罗安达'] },
+  { id: 'pl', name: '波兰', group: '欧洲', lang: 'pl', gl: 'PL', ceid: 'PL:pl', aliases: ['波兰', 'Poland', 'Warsaw', '华沙', 'Polska', 'Warszawa'] },
+  { id: 'al', name: '阿尔巴尼亚', group: '欧洲', lang: 'sq', gl: 'AL', ceid: 'AL:sq', aliases: ['阿尔巴尼亚', 'Albania', 'Tirana', '地拉那', 'Shqipëria'] },
+  { id: 'ua', name: '乌克兰', group: '欧洲', lang: 'uk', gl: 'UA', ceid: 'UA:uk', aliases: ['乌克兰', 'Ukraine', 'Kyiv', 'Kiev', '基辅', 'Україна', 'Київ'] },
+  { id: 'kp', name: '朝鲜', group: '亚洲', lang: 'en', gl: 'KP', ceid: 'KP:en', aliases: ['朝鲜', 'North Korea', 'Pyongyang', '平壤', '조선'] },
+  { id: 'mn', name: '蒙古', group: '亚洲', lang: 'mn', gl: 'MN', ceid: 'MN:mn', aliases: ['蒙古', 'Mongolia', 'Ulaanbaatar', '乌兰巴托', 'Монгол'] },
+  { id: 'do', name: '多米尼加', group: '中南美', lang: 'es', gl: 'DO', ceid: 'DO:es', aliases: ['多米尼加', 'Dominican Republic', 'Santo Domingo', '圣多明各', 'República Dominicana'] },
+  { id: 'cl', name: '智利', group: '中南美', lang: 'es', gl: 'CL', ceid: 'CL:es', aliases: ['智利', 'Chile', 'Santiago', '圣地亚哥'] },
+  { id: 'pe', name: '秘鲁', group: '中南美', lang: 'es', gl: 'PE', ceid: 'PE:es', aliases: ['秘鲁', 'Peru', 'Lima', '利马', 'Perú'] },
+  { id: 'ec', name: '厄瓜多尔', group: '中南美', lang: 'es', gl: 'EC', ceid: 'EC:es', aliases: ['厄瓜多尔', 'Ecuador', 'Quito', '基多'] },
+  { id: 've', name: '委内瑞拉', group: '中南美', lang: 'es', gl: 'VE', ceid: 'VE:es', aliases: ['委内瑞拉', 'Venezuela', 'Caracas', '加拉加斯'] },
+]
+
+const MARKET_BY_ID = new Map(MARKETS.map((market) => [market.id, market]))
+
+/** 从标题/摘要里认出属于哪个目标市场；认不出返回空串。 */
+export function detectMarket(text) {
+  const haystack = String(text || '')
+  if (!haystack) return ''
+  for (const market of MARKETS) {
+    if (market.aliases.some((alias) => haystack.includes(alias))) return market.id
+  }
+  return ''
+}
+
+/** 目标市场的采集任务：每个市场按当地语言跑 1–2 条本地化查询。 */
+export function marketJobs(marketIds) {
+  const wanted = Array.isArray(marketIds) && marketIds.length ? new Set(marketIds) : null
+  const jobs = []
+  for (const market of MARKETS) {
+    if (wanted && !wanted.has(market.id)) continue
+    const queries = (MARKET_QUERIES[market.lang] || MARKET_QUERIES.en).slice(0, 2)
+    for (const query of queries) {
+      jobs.push({
+        kind: 'market',
+        lang: market.lang,
+        market: market.id,
+        region: market.name,
+        query,
+        name: `${market.name} · ${market.lang} · ${query}`,
+        edition: { lang: market.lang, hl: market.lang, gl: market.gl, ceid: market.ceid },
+      })
+    }
+  }
+  return jobs
+}
+
 export async function collect(options = {}) {
   const hours = Number.isFinite(options.hours) ? Math.max(0, options.hours) : 72;
   const limit = Number.isFinite(options.limit) ? Math.max(1, Math.min(200, options.limit)) : 40;
   const mode = options.mode === 'news' || options.mode === 'feeds' ? options.mode : 'all';
   const signal = options.signal;
   const latency = options.latency && typeof options.latency === 'object' ? options.latency : {};
+  const marketIds = Array.isArray(options.markets) ? options.markets : null;
   const skipNames = options.skipNames instanceof Set ? options.skipNames : null;
 
   let langs = Array.isArray(options.langs) && options.langs.length ? options.langs : ['zh', 'en', 'ar', 'es', 'ru'];
@@ -534,6 +623,24 @@ export async function collect(options = {}) {
         },
       });
     }
+  }
+
+  // 目标市场：按当地语言与 Google 本地版抓「中国车 / 进口车」
+  for (const job of marketJobs(marketIds)) {
+    const sourceName = job.name
+    jobs.push({
+      kind: 'google',
+      lang: job.lang,
+      market: job.market,
+      name: sourceName,
+      region: job.region,
+      timeout: timeoutFor(sourceName, latency),
+      run: async () => {
+        const xml = await fetchText(googleNewsUrl(job.edition, job.query), timeoutFor(sourceName, latency), 2)
+        // 市场任务只借本地版拉取，不把市场名写进 region：否则整版条目都会被误判成该市场
+        return parseGoogleItems(xml, job.lang, job.query)
+      },
+    })
   }
 
   const statuses = new Map();
@@ -616,11 +723,13 @@ export async function collect(options = {}) {
       (item.via === 'feed' ? 1.5 : 0) +
       (item.publishedAt ? Math.max(0, 2 - (now - item.publishedAt) / (72 * 3600 * 1000)) : 0);
 
+    const market = item.market || detectMarket(`${item.title} ${item.snippet || ''} ${item.region || ''}`)
     const signal = classifySignal({ title: item.title, snippet: item.snippet || '' })
     merged.push({
       title: item.title,
       signal: signal.score,
       signalKinds: signal.kinds,
+      market: market || '',
       source: item.source,
       lang: item.lang,
       region: item.region || '',

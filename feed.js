@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { extractArticle } from './article.js'
 import { collect, EDITIONS, FEEDS, LOCALES, looksLikeAppliance } from './radar.js'
 import { OFFICIAL_REFS, OFFICIAL_SOURCES, WATCH_SOURCES, fetchOfficialList } from './official.js'
+import { MARKETS } from './radar.js'
 import {
   PLATFORMS,
   SOCIAL_TEMPLATE,
@@ -610,6 +611,7 @@ export class RadarFeed {
             feeds: this.feedList(),
             latency: this.state.sourceLatency,
             skipNames: this.state.rounds % SLOW_EVERY === 1 ? slowNames : null,
+            markets: MARKETS.map((market) => market.id),
           }),
           this.collectSocial(),
           this.collectOfficial(),
@@ -665,6 +667,7 @@ export class RadarFeed {
         topics: Array.isArray(raw.topics) ? raw.topics : [],
         signal: Number(raw.signal) || 0,
         signalKinds: Array.isArray(raw.signalKinds) ? raw.signalKinds : [],
+        market: typeof raw.market === 'string' ? raw.market : '',
         addedAt: existing?.addedAt || new Date(now).toISOString(),
       })
     }
@@ -1014,6 +1017,7 @@ export class RadarFeed {
       untranslated: this.state.items.filter((item) => !item.titleZh).length,
       translating: Boolean(this.translating),
       lastRefreshMs: this.state.lastRefreshMs || null,
+      markets: MARKETS.map((market) => ({ id: market.id, name: market.name, group: market.group })),
       unreadCount,
       favoriteCount,
       watchlist: this.config.watchlist || [],

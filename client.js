@@ -51,6 +51,10 @@ window.__ModuleLoader__.load({
       chinese: '中文',
       pool: '条目池 {n}',
       signalOnly: '只看信号',
+      marketOnly: '我的市场',
+      marketHint: '按你列的目标市场过滤：中东 8、中亚 3、高加索 3、俄罗斯、非洲 7、欧洲 3、亚洲 2、中南美 5',
+      marketEmpty: '这些市场暂时没有新条目，点一下「我的市场」看全部市场',
+      myMarkets: '目标市场（32 个）',
       all: '全部',
       signalHint: '可操作信号：关税、进口政策、建厂/KD、渠道、海运、禁售召回、补贴、进出市场',
       signalEmpty: '这段时间没有可操作信号，切到「全部」看背景资讯',
@@ -171,6 +175,10 @@ window.__ModuleLoader__.load({
       chinese: 'Chinese',
       pool: '{n} items pooled',
       signalOnly: 'Only signals',
+      marketOnly: 'My markets',
+      marketHint: 'Filter to your target markets: Middle East 8, Central Asia 3, Caucasus 3, Russia, Africa 7, Europe 3, Asia 2, Latin America 5',
+      marketEmpty: 'No items for these markets yet — toggle “My markets” to see all',
+      myMarkets: 'Target markets (32)',
       all: 'All',
       signalHint: 'Actionable: tariffs, import rules, plants/KD, dealers, shipping, bans, incentives, market entry',
       signalEmpty: 'No actionable signal in this window — switch to All for background',
@@ -651,7 +659,7 @@ window.__ModuleLoader__.load({
               : fill(t('healthOk'), { ok: data.channelHealth?.ok ?? 0, total: data.channelHealth?.total ?? 0 })) : null))
     }
 
-    function Toolbar({ t, hours, setHours, langs, setLangs, topic, setTopic, query, setQuery, data, unreadOnly, setUnreadOnly, watchOnly, setWatchOnly, signalOnly, setSignalOnly, signalCount }) {
+    function Toolbar({ t, hours, setHours, langs, setLangs, topic, setTopic, query, setQuery, data, unreadOnly, setUnreadOnly, watchOnly, setWatchOnly, signalOnly, setSignalOnly, signalCount, marketOnly, setMarketOnly, marketCount }) {
       const langChips = CODES.map((code) => {
         const count = data?.byLang?.[code] || 0
         const normal = langs.length === 0
@@ -691,6 +699,8 @@ window.__ModuleLoader__.load({
           el(Chip, { active: unreadOnly, onClick: () => setUnreadOnly(!unreadOnly) }, t('unreadOnly')),
           el(Chip, { active: signalOnly, title: t('signalHint'), onClick: () => setSignalOnly(!signalOnly) },
             `${t('signalOnly')}${signalCount ? ` ${signalCount}` : ''}`),
+          el(Chip, { active: marketOnly, title: t('marketHint'), onClick: () => setMarketOnly(!marketOnly) },
+            `${t('marketOnly')}${marketCount ? ` ${marketCount}` : ''}`),
           data?.watchlist?.length ? el(Chip, { active: watchOnly, onClick: () => setWatchOnly(!watchOnly) }, t('watchOnly')) : null),
         el('div', { className: 'aer-tool-row is-wrap' },
           el(Chip, { active: langs.length === 0, onClick: () => setLangs([]) }, t('allLangs')),
@@ -702,7 +712,7 @@ window.__ModuleLoader__.load({
           : null)
     }
 
-    function Item({ item, t, onOpen, onFavorite, watched }) {
+    function Item({ item, t, onOpen, onFavorite, watched, marketName }) {
       const title = stripSource(item.titleZh || item.title, item.source)
       const original = stripSource(item.title, item.source)
       const showOriginal = Boolean(item.titleZh) && item.titleZh.trim() !== item.title.trim()
@@ -737,6 +747,7 @@ window.__ModuleLoader__.load({
         el('span', { className: 'aer-src' }, item.source),
         item.region ? el('span', { className: 'aer-dot' }, '·') : null,
         item.region ? el('span', null, item.region) : null,
+        item.market ? el('span', { className: 'aer-market' }, marketName(item.market)) : null,
         el('span', { className: 'aer-dot' }, '·'),
         el('time', { dateTime: item.publishedAt || undefined }, relTime(item.publishedAt || item.addedAt)),
         (item.topics || []).slice(0, 2).map((tag) => el('span', { key: tag, className: 'aer-tag' }, tag)),
@@ -772,6 +783,7 @@ window.__ModuleLoader__.load({
           el('span', null, article?.site || item.source),
           item.region ? el('span', { className: 'aer-dot' }, '·') : null,
           item.region ? el('span', null, item.region) : null,
+        item.market ? el('span', { className: 'aer-market' }, marketName(item.market)) : null,
           el('span', { className: 'aer-dot' }, '·'),
           el('span', null, relTime(item.publishedAt || item.addedAt)),
           article ? el('span', { className: 'aer-dot' }, '·') : null,
@@ -1201,8 +1213,11 @@ window.__ModuleLoader__.load({
       const [topic, setTopic] = React.useState(null)
       const [query, setQuery] = React.useState('')
       const [unreadOnly, setUnreadOnly] = React.useState(false)
+      const [marketOnly, setMarketOnly] = React.useState(() => {
+        try { return localStorage.getItem('aer.marketOnly') !== '0' } catch { return true }
+      })
       const [signalOnly, setSignalOnly] = React.useState(() => {
-        try { return localStorage.getItem('aer.signalOnly') !== '0' } catch { return true }
+        try { return localStorage.getItem('aer.signalOnly') === '1' } catch { return false }
       })
       const [watchOnly, setWatchOnly] = React.useState(false)
       const [shown, setShown] = React.useState(PAGE_SIZE)
@@ -1214,7 +1229,14 @@ window.__ModuleLoader__.load({
       const [translating, setTranslating] = React.useState(false)
 
       const data = radar.data
+      const marketNames = React.useMemo(() => {
+        const map = new Map()
+        for (const market of data?.markets || []) map.set(market.id, market.name)
+        return map
+      }, [data])
       const watchlist = data?.watchlist || []
+
+      const marketName = (id) => marketNames.get(id) || id
 
       const filtered = React.useMemo(() => {
         const items = data?.items || []
@@ -1235,14 +1257,19 @@ window.__ModuleLoader__.load({
             }
             return true
           })
-        const list = signalOnly ? base.filter((item) => Number(item.signal) > 0) : base
-        return list.sort((a, b) => (signalOnly ? (Number(b.signal) - Number(a.signal)) || stampOf(b) - stampOf(a) : stampOf(b) - stampOf(a)))
-      }, [data, tab, hours, langs, topic, query, unreadOnly, watchOnly, watchlist, signalOnly])
+        const byMarket = marketOnly ? base.filter((item) => Boolean(item.market)) : base
+        const list = signalOnly ? byMarket.filter((item) => Number(item.signal) > 0) : byMarket
+        const score = (item) => (Number(item.signal) || 0) + (item.market ? 1 : 0)
+        return list.sort((a, b) => (signalOnly || marketOnly ? score(b) - score(a) || stampOf(b) - stampOf(a) : stampOf(b) - stampOf(a)))
+      }, [data, tab, hours, langs, topic, query, unreadOnly, watchOnly, watchlist, signalOnly, marketOnly])
 
-      const signalCount = React.useMemo(() => (data?.items || []).filter((item) => Number(item.signal) > 0 && stampOf(item) >= Date.now() - hours * 3600_000).length, [data, hours])
+      const inWindow = React.useMemo(() => (data?.items || []).filter((item) => stampOf(item) >= Date.now() - hours * 3600_000), [data, hours])
+      const signalCount = React.useMemo(() => inWindow.filter((item) => Number(item.signal) > 0).length, [inWindow])
+      const marketCount = React.useMemo(() => inWindow.filter((item) => Boolean(item.market)).length, [inWindow])
 
       React.useEffect(() => { setShown(PAGE_SIZE) }, [tab, hours, langs, topic, query, unreadOnly, watchOnly, signalOnly])
       React.useEffect(() => { try { localStorage.setItem('aer.signalOnly', signalOnly ? '1' : '0') } catch { /* 忽略 */ } }, [signalOnly])
+      React.useEffect(() => { try { localStorage.setItem('aer.marketOnly', marketOnly ? '1' : '0') } catch { /* 忽略 */ } }, [marketOnly])
 
       const visible = React.useMemo(() => filtered.slice(0, shown), [filtered, shown])
 
@@ -1366,7 +1393,7 @@ window.__ModuleLoader__.load({
             ? el('ul', { className: 'aer-list' },
               visible.map((item) => el('li', { key: item.id },
                 el(Item, {
-                  item, t,
+                  item, t, marketName,
                   onOpen: openItem,
                   onFavorite: radar.toggleFavorite,
                   watched: matchesWatch(item, watchlist),
@@ -1378,9 +1405,15 @@ window.__ModuleLoader__.load({
                 }, fill(t('more'), { n: filtered.length - visible.length })))
                 : null)
             : el('div', { className: 'aer-state-block' },
-              el('p', null, tab === 'favorites' ? t('emptyFav') : signalOnly ? t('signalEmpty') : t('empty')),
-              tab === 'feed' && signalOnly
-                ? el('button', { type: 'button', className: 'aer-btn', onClick: () => setSignalOnly(false) }, t('all'))
+              el('p', null, tab === 'favorites'
+                ? t('emptyFav')
+                : marketOnly && !signalOnly ? t('marketEmpty')
+                  : signalOnly && marketOnly ? t('signalEmpty')
+                    : t('empty')),
+              tab === 'feed' && (signalOnly || marketOnly)
+                ? el('div', { className: 'aer-feed-actions' },
+                  marketOnly ? el('button', { type: 'button', className: 'aer-btn', onClick: () => setMarketOnly(false) }, t('marketOnly')) : null,
+                  signalOnly ? el('button', { type: 'button', className: 'aer-btn', onClick: () => setSignalOnly(false) }, t('signalOnly')) : null)
                 : null,
               el('p', { className: 'aer-muted' }, t('emptyHint')))
 
@@ -1399,7 +1432,7 @@ window.__ModuleLoader__.load({
             tab === 'feed' ? el(Toolbar, {
               t, hours, setHours, langs, setLangs, topic, setTopic, query, setQuery, data,
               unreadOnly, setUnreadOnly, watchOnly, setWatchOnly,
-              signalOnly, setSignalOnly, signalCount,
+              signalOnly, setSignalOnly, signalCount, marketOnly, setMarketOnly, marketCount,
             }) : null,
             feedState,
             data && data.lastError
