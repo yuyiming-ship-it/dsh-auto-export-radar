@@ -757,7 +757,7 @@ window.__ModuleLoader__.load({
         el('span', { className: 'aer-src' }, item.source),
         item.region ? el('span', { className: 'aer-dot' }, '·') : null,
         item.region ? el('span', null, item.region) : null,
-        item.market ? el('span', { className: 'aer-market' }, marketName(item.market)) : null,
+        item.market ? el('span', { className: 'aer-market' }, (marketName || ((id) => id))(item.market)) : null,
         el('span', { className: 'aer-dot' }, '·'),
         el('time', { dateTime: item.publishedAt || undefined }, relTime(item.publishedAt || item.addedAt)),
         (item.topics || []).slice(0, 2).map((tag) => el('span', { key: tag, className: 'aer-tag' }, tag)),
@@ -768,7 +768,7 @@ window.__ModuleLoader__.load({
         }, icon(item.hasArticle === false ? 'external' : 'book', 13))))
     }
 
-    function Reader({ t, state, onClose, onTranslate, onFavorite, translating }) {
+    function Reader({ t, state, onClose, onTranslate, onFavorite, translating, marketName }) {
       const item = state.item
       const article = state.article
       const paragraphs = article ? (state.view === 'zh' && article.zh?.paragraphs?.length ? article.zh.paragraphs : article.paragraphs) : []
@@ -793,7 +793,7 @@ window.__ModuleLoader__.load({
           el('span', null, article?.site || item.source),
           item.region ? el('span', { className: 'aer-dot' }, '·') : null,
           item.region ? el('span', null, item.region) : null,
-        item.market ? el('span', { className: 'aer-market' }, marketName(item.market)) : null,
+        item.market ? el('span', { className: 'aer-market' }, (marketName || ((id) => id))(item.market)) : null,
           el('span', { className: 'aer-dot' }, '·'),
           el('span', null, relTime(item.publishedAt || item.addedAt)),
           article ? el('span', { className: 'aer-dot' }, '·') : null,
@@ -1474,7 +1474,7 @@ window.__ModuleLoader__.load({
           body,
           showReader
             ? el(Reader, {
-              t,
+              t, marketName,
               state: reader,
               onClose: (key, value) => {
                 if (key === 'view') setReader((current) => (current ? { ...current, view: value } : current))
