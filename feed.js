@@ -28,6 +28,8 @@ const TRANSLATE_CONCURRENCY = 4
 const TRANSLATE_BATCH = 16
 const TRANSLATE_CHUNK_CONCURRENCY = 4
 const TRANSLATE_CACHE_LIMIT = 6000
+const SLOW_SOURCE_MS = 8000
+const SLOW_EVERY = 2
 const MAX_TRANSLATE_PER_CYCLE = 100
 const ARTICLE_TTL_MS = 14 * 24 * 3600 * 1000
 const ARTICLE_MAX = 120
@@ -365,6 +367,8 @@ function emptyState() {
     officialSources: [],
     officialWatch: {},
     officialSeen: {},
+    sourceLatency: {},
+    rounds: 0,
   }
 }
 
@@ -407,6 +411,7 @@ function normalizeSaved(saved) {
     : []
   state.officialWatch = isPlainObject(saved.officialWatch) ? saved.officialWatch : {}
   state.officialSeen = isPlainObject(saved.officialSeen) ? saved.officialSeen : {}
+  state.sourceLatency = isPlainObject(saved.sourceLatency) ? saved.sourceLatency : {}
   state.officialSources = Array.isArray(saved.officialSources)
     ? saved.officialSources
         .filter((row) => isPlainObject(row) && typeof row.url === 'string' && /^https?:\/\//i.test(row.url))
@@ -593,6 +598,8 @@ export class RadarFeed {
       const startedAt = Date.now()
       try {
         await this.ready
+        this.state.rounds = (this.state.rounds || 0) + 1
+        const slowNames = this.slowSources()
         // 新闻/RSS、社交、官方页三路互不依赖，一起发；总时长取最慢的一路
         const [result, social, official] = await Promise.all([
           collect({
@@ -601,10 +608,13 @@ export class RadarFeed {
             langs: ['all'],
             mode: 'all',
             feeds: this.feedList(),
+            latency: this.state.sourceLatency,
+            skipNames: this.state.rounds % SLOW_EVERY === 1 ? slowNames : null,
           }),
           this.collectSocial(),
           this.collectOfficial(),
         ])
+        this.recordLatency(result.sources)
         this.merge({
           ...result,
           items: [...(result.items || []), ...social.items, ...official.items],
@@ -712,6 +722,25 @@ export class RadarFeed {
     return { id, enabled: Boolean(enabled) }
   }
 
+  /** 上一轮实测超过阈值的源：隔一轮抓一次，避免每轮都被同一批慢站拽住。 */
+  slowSources() {
+    const table = this.state.sourceLatency || {}
+    return new Set(Object.entries(table).filter(([, ms]) => Number(ms) > SLOW_SOURCE_MS).map(([name]) => name))
+  }
+
+  /** 用本轮耗时更新每源滑动平均，下一轮据此收紧超时。 */
+  recordLatency(sources) {
+    if (!Array.isArray(sources)) return
+    const table = this.state.sourceLatency || {}
+    for (const source of sources) {
+      const ms = Number(source?.ms)
+      if (!Number.isFinite(ms) || ms <= 0) continue
+      const prev = Number(table[source.name])
+      table[source.name] = Number.isFinite(prev) && prev > 0 ? Math.round(prev * 0.7 + ms * 0.3) : Math.round(ms)
+    }
+    this.state.sourceLatency = table
+  }
+
   /**
    * 抓官方公告页：部委 / 海关 / 公报没有 RSS，用列表页 + 关键词过滤。
    * 没有匹配公告时记 0 条（正常），打不开才记故障。
@@ -723,14 +752,37 @@ export class RadarFeed {
     const now = new Date().toISOString()
     if (!sources.length) return { items, sources: sourcesOut }
     const seen = new Set()
+    const startedAt = Date.now()
+    const budgetMs = 13000
     await mapLimit(sources, 6, async (source) => {
+      const isOddRound = (this.state.rounds || 0) % SLOW_EVERY === 1
+      const slowOfficial = isOddRound && Number(this.state.sourceLatency?.[source.name]) > SLOW_SOURCE_MS
+      if (slowOfficial) {
+        sourcesOut.push({ name: source.name, ok: true, items: 0, error: null, lang: source.lang, official: true, skipped: true, ms: 0, note: '慢源降频，本轮跳过' })
+        this.officialStatus.set(source.id, { ok: true, items: 0, error: null, at: now, skipped: true, note: '慢源降频，本轮跳过' })
+        return
+      }
+      if (Date.now() > startedAt + budgetMs) {
+        sourcesOut.push({ name: source.name, ok: true, items: 0, error: null, lang: source.lang, official: true, skipped: true, ms: 0, note: '本轮超预算，下轮再抓' })
+        this.officialStatus.set(source.id, { ok: true, items: 0, error: null, at: now, skipped: true, note: '本轮超预算，下轮再抓' })
+        return
+      }
       if (source.watch && !this.watchEnabled(source)) {
         sourcesOut.push({ name: source.name, ok: true, items: 0, error: null, lang: source.lang, official: true, watch: true, paused: true, note: source.note || '已暂停' })
         this.officialStatus.set(source.id, { ok: true, items: 0, error: null, at: now, watch: true, paused: true, note: source.note || '已暂停' })
         return
       }
       try {
-        const rows = await hardTimeout(fetchOfficialList(source), 15000, `${source.name} `)
+        const ewma = Number(this.state.sourceLatency?.[source.name])
+        const timeoutMs = Number.isFinite(ewma) && ewma > 0 ? Math.min(15000, Math.max(6000, Math.round(ewma * 3))) : 15000
+        const t0 = Date.now()
+        const rows = await hardTimeout(fetchOfficialList(source), timeoutMs, `${source.name} `)
+        const took = Date.now() - t0
+        const prev = Number(this.state.sourceLatency?.[source.name])
+        this.state.sourceLatency = {
+          ...(this.state.sourceLatency || {}),
+          [source.name]: Number.isFinite(prev) && prev > 0 ? Math.round(prev * 0.7 + took * 0.3) : Math.round(took),
+        }
         let kept = 0
         if (source.watch) {
           const previous = Array.isArray(this.state.officialSeen?.[source.id]) ? this.state.officialSeen[source.id] : null
@@ -772,6 +824,7 @@ export class RadarFeed {
           error: null,
           lang: source.lang,
           official: true,
+          ms: took,
           note: kept ? null : '本期没有匹配关键词的公告',
         })
         this.officialStatus.set(source.id, { ok: true, items: kept, error: null, at: now, note: kept ? null : '本期没有匹配关键词的公告' })

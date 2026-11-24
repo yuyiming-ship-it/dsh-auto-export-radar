@@ -69,6 +69,7 @@ window.__ModuleLoader__.load({
       watchOn: '监控中',
       watchOff: '已暂停',
       watchNote: '增量：只收新法令',
+      skipped: '本轮超预算，下轮再抓',
       officialRefsTitle: '进口规则入口（{n} 个）',
       officialRefsHint: '各国海关、法规、公报和申报页。它们没有 RSS，也没有可抓的公告列表，所以只做一键入口，不进信息流；想盯某一页的更新，把它填进上面的「添加官方页面」。',
       socialSources: '社交源（X / Facebook / Threads）',
@@ -184,6 +185,7 @@ window.__ModuleLoader__.load({
       watchOn: 'Watching',
       watchOff: 'Paused',
       watchNote: 'Incremental: new acts only',
+      skipped: 'Skipped this round (time budget)',
       officialRefsTitle: 'Import rule bookmarks ({n})',
       officialRefsHint: 'Customs, legislation, gazettes and declaration portals. They have no RSS feed, so they are one-click bookmarks rather than a stream; to watch one for updates, add it under “Add an official page”.',
       socialSources: 'Social sources (X / Facebook / Threads)',
@@ -889,6 +891,15 @@ window.__ModuleLoader__.load({
       const official = data?.official || {}
       const officialSources = official.sources || []
       const officialRefs = official.refs || []
+      const statusCell = (source) => {
+        const status = source.status
+        if (status?.paused) return el('span', { className: 'aer-state is-warn' }, status.note || t('watchOff'))
+        if (status?.skipped) return el('span', { className: 'aer-state is-warn' }, status.note || t('skipped'))
+        if (status?.ok === false) return el('span', { className: 'aer-state is-bad' }, status.error || '×')
+        if (source.watch) return el('span', { className: status?.items ? 'aer-state is-good' : 'aer-state' }, status?.note || t('watchNote'))
+        if (status?.items) return el('span', { className: 'aer-state is-good' }, fill(t('officialCount'), { n: status.items }))
+        return el('span', { className: 'aer-state' }, t('officialEmpty'))
+      }
       const officialRegions = React.useMemo(() => {
         const groups = new Map()
         for (const ref of officialRefs) {
@@ -973,15 +984,7 @@ window.__ModuleLoader__.load({
                 onClick: () => onSaveWatch(source.id, !source.enabled),
               }, source.enabled ? t('watchOn') : t('watchOff'))
               : null,
-            source.status?.paused
-              ? el('span', { className: 'aer-state is-warn' }, source.status.note || t('watchOff'))
-              : source.status?.ok === false
-                ? el('span', { className: 'aer-state is-bad' }, source.status.error || '×')
-                : source.watch
-                  ? el('span', { className: source.status?.items ? 'aer-state is-good' : 'aer-state' }, source.status?.note || t('watchNote'))
-                  : source.status?.items
-                    ? el('span', { className: 'aer-state is-good' }, fill(t('officialCount'), { n: source.status.items }))
-                    : el('span', { className: 'aer-state' }, t('officialEmpty')),
+            statusCell(source),
             source.custom
               ? el(IconButton, {
                 name: 'trash', label: t('remove'), className: 'is-quiet',

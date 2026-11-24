@@ -10,6 +10,16 @@ const GOOGLE_NEWS = 'https://news.google.com/rss/search';
 const CONCURRENCY = 12;
 const GOOGLE_CONCURRENCY = 6;
 const PER_SOURCE_TIMEOUT_MS = 15000;
+const MIN_SOURCE_TIMEOUT_MS = 6000;
+const FEED_BUDGET_MS = 15000;
+const GOOGLE_BUDGET_MS = 11000;
+
+/** 按历史平均耗时给单源超时：快的站早点放弃，慢的站别一刀切。 */
+function timeoutFor(name, latency) {
+  const ewma = Number(latency?.[name])
+  if (!Number.isFinite(ewma) || ewma <= 0) return PER_SOURCE_TIMEOUT_MS
+  return Math.min(PER_SOURCE_TIMEOUT_MS, Math.max(MIN_SOURCE_TIMEOUT_MS, Math.round(ewma * 3)))
+}
 
 /** 语种 → 面板上的语言标签；真正的采集单元是下面的 EDITIONS。 */
 export const LOCALES = {
@@ -421,6 +431,8 @@ export async function collect(options = {}) {
   const limit = Number.isFinite(options.limit) ? Math.max(1, Math.min(200, options.limit)) : 40;
   const mode = options.mode === 'news' || options.mode === 'feeds' ? options.mode : 'all';
   const signal = options.signal;
+  const latency = options.latency && typeof options.latency === 'object' ? options.latency : {};
+  const skipNames = options.skipNames instanceof Set ? options.skipNames : null;
 
   let langs = Array.isArray(options.langs) && options.langs.length ? options.langs : ['zh', 'en', 'ar', 'es', 'ru'];
   if (langs.includes('all')) langs = Object.keys(LOCALES);
@@ -440,13 +452,15 @@ export async function collect(options = {}) {
       const label = LOCALES[edition.lang]?.label ?? edition.lang;
       const queries = [...edition.queries, ...(extraQuery ? [extraQuery] : [])];
       for (const query of queries) {
+        const sourceName = `Google News · ${label} · ${edition.region}`
         jobs.push({
           kind: 'google',
           lang: edition.lang,
           query,
-          name: `Google News · ${label} · ${edition.region}`,
+          name: sourceName,
+          timeout: timeoutFor(sourceName, latency),
           run: async () => {
-            const xml = await fetchText(googleNewsUrl(edition, query), PER_SOURCE_TIMEOUT_MS, 2);
+            const xml = await fetchText(googleNewsUrl(edition, query), timeoutFor(sourceName, latency), 2);
             return parseGoogleItems(xml, edition.lang, query).map((it) => ({ ...it, region: edition.region }));
           },
         });
@@ -466,8 +480,9 @@ export async function collect(options = {}) {
         kind: 'feed',
         lang: feed.lang,
         name: feed.name,
+        timeout: timeoutFor(feed.name, latency),
         run: async () => {
-          const xml = await fetchText(feed.url, PER_SOURCE_TIMEOUT_MS);
+          const xml = await fetchText(feed.url, timeoutFor(feed.name, latency));
           return parseFeedItems(xml, feed).map((it) => ({ ...it, region: feed.region }));
         },
       });
@@ -475,17 +490,34 @@ export async function collect(options = {}) {
   }
 
   const statuses = new Map();
+  const startedAt = Date.now();
+  const deadlineFor = (kind) => startedAt + (kind === 'google' ? GOOGLE_BUDGET_MS : FEED_BUDGET_MS);
   const runJob = async (job) => {
     if (signal?.aborted) return [];
     const key = job.name;
-    if (!statuses.has(key)) statuses.set(key, { name: key, ok: true, items: 0, error: null, lang: job.lang });
+    if (!statuses.has(key)) statuses.set(key, { name: key, ok: true, items: 0, error: null, lang: job.lang, ms: 0, skipped: false });
     const status = statuses.get(key);
+    // 慢源降频：上一轮实测特别慢的源，这轮直接跳过，下轮再抓
+    if (skipNames?.has(key)) {
+      status.skipped = true
+      status.note = '慢源降频，本轮跳过'
+      return []
+    }
+    // 本轮预算用完就先跳过，下一轮再抓；别让个别慢站把整轮拖长
+    if (Date.now() > deadlineFor(job.kind)) {
+      status.skipped = true;
+      status.note = '本轮超预算，下轮再抓'
+      return [];
+    }
+    const t0 = Date.now();
     try {
       const items = await job.run();
       status.items += items.length;
+      status.ms = Date.now() - t0;
       return items;
     } catch (error) {
       status.ok = false;
+      status.ms = Date.now() - t0;
       status.error = error?.message ? String(error.message) : String(error);
       return [];
     }
