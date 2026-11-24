@@ -684,12 +684,8 @@ export class RadarFeed {
       .slice(0, POOL_MAX)
     this.state.items = items
     this.state.collected = result.collected ?? items.length
-    // 官方源现在单独在后台跑：按名字合并状态，别把上一批渠道（新闻/RSS 或官方）整组冲掉
-    if (Array.isArray(result.sources)) {
-      const merged = new Map(this.state.sources.map((row) => [row.name, row]))
-      for (const row of result.sources) merged.set(row.name, row)
-      this.state.sources = [...merged.values()]
-    }
+    // 一轮的渠道状态就是完整清单：直接替换，删掉的源不会一直挂在健康列表里
+    if (Array.isArray(result.sources) && result.sources.length) this.state.sources = result.sources
   }
 
   /** 官方信源：内置清单 + 自己加的页面。 */

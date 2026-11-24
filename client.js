@@ -410,11 +410,13 @@ window.__ModuleLoader__.load({
         try {
           const res = await fetch(API('/feed?hours=168&limit=300'), { headers: { accept: 'application/json' }, credentials: 'same-origin' })
           const body = await readJsonResponse(res)
-          if (!alive.current) return
+          if (!alive.current) return null
           setData(body)
           setError(null)
+          return body
         } catch (err) {
           if (alive.current) setError(String(err?.message || err))
+          return null
         }
       }, [])
 
@@ -445,12 +447,19 @@ window.__ModuleLoader__.load({
       const refreshNow = React.useCallback(async () => {
         setManualBusy(true)
         try {
-          await fetch(API('/refresh'), { method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' } })
-        } catch (_error) {
-          /* 失败原因会回到 feed.lastError */
+          const res = await fetch(API('/refresh'), { method: 'POST', credentials: 'same-origin', headers: { accept: 'application/json' } })
+          if (!res.ok) throw new Error(`刷新请求失败 HTTP ${res.status}`)
+          // 服务端是 202 立即返回，这里自己轮询到本轮结束（最多 3 分钟）
+          for (let i = 0; i < 90; i += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 2000))
+            const body = await load()
+            if (!body || !body.refreshing) break
+          }
+        } catch (err) {
+          if (alive.current) setError(String(err?.message || err))
+        } finally {
+          setManualBusy(false)
         }
-        await load()
-        setManualBusy(false)
       }, [load])
 
       const patchItems = React.useCallback((keys, patch) => {
@@ -621,7 +630,7 @@ window.__ModuleLoader__.load({
       }, icon(name, 15))
     }
 
-    function Header({ t, tabs, data, auto, setAuto, onRefresh, busy }) {
+    function Header({ t, tabs, data, auto, setAuto, onRefresh, busy, manualBusy }) {
       const updated = data?.generatedAt ? clock(data.generatedAt) : null
       const next = data?.nextRefreshAt ? clock(data.nextRefreshAt) : null
       return el('header', { className: 'aer-head' },
@@ -634,9 +643,10 @@ window.__ModuleLoader__.load({
         el('div', { className: 'aer-head-tools' },
           tabs,
           el('button', {
-            type: 'button', className: busy ? 'aer-btn is-busy' : 'aer-btn', onClick: onRefresh,
-            disabled: busy, title: t('refresh'),
-          }, icon('refresh', 15), el('span', null, busy ? t('refreshing') : t('refresh'))),
+            type: 'button', className: manualBusy ? 'aer-btn is-busy' : 'aer-btn', onClick: onRefresh,
+            disabled: manualBusy, title: t('refresh'),
+            'aria-busy': manualBusy ? 'true' : 'false',
+          }, icon('refresh', 15), el('span', null, manualBusy ? t('refreshing') : t('refresh'))),
           el('button', {
             type: 'button', className: auto ? 'aer-switch is-on' : 'aer-switch',
             role: 'switch', 'aria-checked': auto, title: t('auto'),
@@ -1449,6 +1459,7 @@ window.__ModuleLoader__.load({
           setAuto: radar.setAuto,
           onRefresh: radar.refreshNow,
           busy,
+          manualBusy: radar.manualBusy,
         }),
         el('div', { className: `aer-body ${showReader ? 'has-reader' : ''}` },
           body,
