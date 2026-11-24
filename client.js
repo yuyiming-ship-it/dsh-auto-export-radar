@@ -21,6 +21,7 @@ window.__ModuleLoader__.load({
       updated: '更新于 {time}',
       next: '下次 {time}',
       lastTake: '上次抓取 {s} 秒',
+      pendingTranslate: '{n} 条待翻译',
       waiting: '等待第一次抓取',
       w24: '24 小时',
       w72: '3 天',
@@ -145,6 +146,7 @@ window.__ModuleLoader__.load({
       updated: 'Updated {time}',
       next: 'Next {time}',
       lastTake: 'Last run {s}s',
+      pendingTranslate: '{n} to translate',
       waiting: 'Waiting for the first run',
       w24: '24 hours',
       w72: '3 days',
@@ -658,6 +660,8 @@ window.__ModuleLoader__.load({
           auto && next ? el('span', null, fill(t('next'), { time: next })) : null,
           data?.lastRefreshMs ? el('span', { className: 'aer-sep' }, '·') : null,
           data?.lastRefreshMs ? el('span', null, fill(t('lastTake'), { s: (data.lastRefreshMs / 1000).toFixed(1) })) : null,
+          untranslatedCount ? el('span', { className: 'is-warn' }, fill(t('pendingTranslate'), { n: untranslatedCount })) : null,
+          untranslatedCount ? el('span', { className: 'aer-sep' }, '·') : null,
           data ? el('span', { className: 'aer-sep' }, '·') : null,
           data ? el('span', null, fill(t('pool'), { n: data.poolSize })) : null,
           data ? el('span', { className: 'aer-sep' }, '·') : null,
@@ -1284,6 +1288,7 @@ window.__ModuleLoader__.load({
       const inWindow = React.useMemo(() => (data?.items || []).filter((item) => stampOf(item) >= Date.now() - hours * 3600_000), [data, hours])
       const signalCount = React.useMemo(() => inWindow.filter((item) => Number(item.signal) > 0).length, [inWindow])
       const marketCount = React.useMemo(() => inWindow.filter((item) => Boolean(item.market)).length, [inWindow])
+      const untranslatedCount = React.useMemo(() => inWindow.filter((item) => !item.titleZh).length, [inWindow])
 
       React.useEffect(() => { setShown(PAGE_SIZE) }, [tab, hours, langs, topic, query, unreadOnly, watchOnly, signalOnly])
       React.useEffect(() => { try { localStorage.setItem('aer.signalOnly', signalOnly ? '1' : '0') } catch { /* 忽略 */ } }, [signalOnly])

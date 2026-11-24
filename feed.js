@@ -31,7 +31,7 @@ const TRANSLATE_CHUNK_CONCURRENCY = 4
 const TRANSLATE_CACHE_LIMIT = 6000
 const SLOW_SOURCE_MS = 8000
 const SLOW_EVERY = 2
-const MAX_TRANSLATE_PER_CYCLE = 100
+const MAX_TRANSLATE_PER_CYCLE = 140
 const ARTICLE_TTL_MS = 14 * 24 * 3600 * 1000
 const ARTICLE_MAX = 120
 const READ_MAX = 800
@@ -338,9 +338,9 @@ export async function translateTitles(texts, { ctx, signal, logger, cache } = {}
 
   if (failed.length && ctx) {
     try {
-      const translated = await llmTranslate(ctx, [...new Set(failed.map((row) => row.text))], signal)
+      const uniqueFailed = [...new Set(failed.map((row) => row.text))].slice(0, 40)
+      const translated = await hardTimeout(llmTranslate(ctx, uniqueFailed, signal), 25000, 'llm-translate')
       if (translated) {
-        const uniqueFailed = [...new Set(failed.map((row) => row.text))]
         failed.forEach((row) => {
           const value = translated[uniqueFailed.indexOf(row.text)]
           if (value) out[row.index] = { titleZh: value, engine: 'llm' }
@@ -952,7 +952,13 @@ export class RadarFeed {
 
   /** 翻译放到后台跑，不挡刷新返回；积压多于一轮上限时连续补几轮。 */
   scheduleTranslate() {
-    if (!this.config.translate || this.translating) return
+    if (!this.config.translate) return
+    if (this.translating) {
+      if (Date.now() - (this.translatingStartedAt || 0) < 120000) return
+      this.logger?.warn?.('auto-export-radar: 上一轮翻译超过 120 秒，强制重开')
+      this.translating = null
+    }
+    this.translatingStartedAt = Date.now()
     this.translating = (async () => {
       try {
         for (let round = 0; round < 4; round += 1) {
@@ -967,6 +973,7 @@ export class RadarFeed {
         this.logger?.warn?.('auto-export-radar: 后台翻译失败：%s', error?.message ?? error)
       } finally {
         this.translating = null
+        this.translatingStartedAt = 0
       }
     })()
   }
