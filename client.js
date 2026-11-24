@@ -50,6 +50,10 @@ window.__ModuleLoader__.load({
       original: '原文',
       chinese: '中文',
       pool: '条目池 {n}',
+      signalOnly: '只看信号',
+      all: '全部',
+      signalHint: '可操作信号：关税、进口政策、建厂/KD、渠道、海运、禁售召回、补贴、进出市场',
+      signalEmpty: '这段时间没有可操作信号，切到「全部」看背景资讯',
       count: '{n} 条',
       unread: '{n} 未读',
       more: '加载更多（还有 {n} 条）',
@@ -166,6 +170,10 @@ window.__ModuleLoader__.load({
       original: 'Original',
       chinese: 'Chinese',
       pool: '{n} items pooled',
+      signalOnly: 'Only signals',
+      all: 'All',
+      signalHint: 'Actionable: tariffs, import rules, plants/KD, dealers, shipping, bans, incentives, market entry',
+      signalEmpty: 'No actionable signal in this window — switch to All for background',
       count: '{n} items',
       unread: '{n} unread',
       more: 'Load more ({n} left)',
@@ -643,7 +651,7 @@ window.__ModuleLoader__.load({
               : fill(t('healthOk'), { ok: data.channelHealth?.ok ?? 0, total: data.channelHealth?.total ?? 0 })) : null))
     }
 
-    function Toolbar({ t, hours, setHours, langs, setLangs, topic, setTopic, query, setQuery, data, unreadOnly, setUnreadOnly, watchOnly, setWatchOnly }) {
+    function Toolbar({ t, hours, setHours, langs, setLangs, topic, setTopic, query, setQuery, data, unreadOnly, setUnreadOnly, watchOnly, setWatchOnly, signalOnly, setSignalOnly, signalCount }) {
       const langChips = CODES.map((code) => {
         const count = data?.byLang?.[code] || 0
         const normal = langs.length === 0
@@ -681,6 +689,8 @@ window.__ModuleLoader__.load({
               'aria-label': t('search'),
             })),
           el(Chip, { active: unreadOnly, onClick: () => setUnreadOnly(!unreadOnly) }, t('unreadOnly')),
+          el(Chip, { active: signalOnly, title: t('signalHint'), onClick: () => setSignalOnly(!signalOnly) },
+            `${t('signalOnly')}${signalCount ? ` ${signalCount}` : ''}`),
           data?.watchlist?.length ? el(Chip, { active: watchOnly, onClick: () => setWatchOnly(!watchOnly) }, t('watchOnly')) : null),
         el('div', { className: 'aer-tool-row is-wrap' },
           el(Chip, { active: langs.length === 0, onClick: () => setLangs([]) }, t('allLangs')),
@@ -711,6 +721,9 @@ window.__ModuleLoader__.load({
         el('span', { className: 'aer-item-title' }, title),
         item.via === 'social' ? el('span', { className: 'aer-social-badge' }, t('socialBadge')) : null,
         item.via === 'official' ? el('span', { className: 'aer-official-badge' }, t('officialBadge')) : null,
+        Number(item.signal) > 0
+          ? el('span', { className: 'aer-signal' }, (item.signalKinds || []).join(' · ') || t('signalOnly'))
+          : null,
         watched ? el('span', { className: 'aer-watch' }, '★') : null,
         item.titleZh ? null : el('span', { className: 'aer-pending' }, t('untranslated')),
         el('button', {
@@ -1188,6 +1201,9 @@ window.__ModuleLoader__.load({
       const [topic, setTopic] = React.useState(null)
       const [query, setQuery] = React.useState('')
       const [unreadOnly, setUnreadOnly] = React.useState(false)
+      const [signalOnly, setSignalOnly] = React.useState(() => {
+        try { return localStorage.getItem('aer.signalOnly') !== '0' } catch { return true }
+      })
       const [watchOnly, setWatchOnly] = React.useState(false)
       const [shown, setShown] = React.useState(PAGE_SIZE)
       const [copied, setCopied] = React.useState(false)
@@ -1204,7 +1220,7 @@ window.__ModuleLoader__.load({
         const items = data?.items || []
         const cutoff = Date.now() - hours * 3600_000
         const needle = query.trim().toLowerCase()
-        return items
+        const base = items
           .filter((item) => {
             if (tab === 'favorites') {
               if (!item.favorite) return false
@@ -1219,10 +1235,14 @@ window.__ModuleLoader__.load({
             }
             return true
           })
-          .sort((a, b) => stampOf(b) - stampOf(a))
-      }, [data, tab, hours, langs, topic, query, unreadOnly, watchOnly, watchlist])
+        const list = signalOnly ? base.filter((item) => Number(item.signal) > 0) : base
+        return list.sort((a, b) => (signalOnly ? (Number(b.signal) - Number(a.signal)) || stampOf(b) - stampOf(a) : stampOf(b) - stampOf(a)))
+      }, [data, tab, hours, langs, topic, query, unreadOnly, watchOnly, watchlist, signalOnly])
 
-      React.useEffect(() => { setShown(PAGE_SIZE) }, [tab, hours, langs, topic, query, unreadOnly, watchOnly])
+      const signalCount = React.useMemo(() => (data?.items || []).filter((item) => Number(item.signal) > 0 && stampOf(item) >= Date.now() - hours * 3600_000).length, [data, hours])
+
+      React.useEffect(() => { setShown(PAGE_SIZE) }, [tab, hours, langs, topic, query, unreadOnly, watchOnly, signalOnly])
+      React.useEffect(() => { try { localStorage.setItem('aer.signalOnly', signalOnly ? '1' : '0') } catch { /* 忽略 */ } }, [signalOnly])
 
       const visible = React.useMemo(() => filtered.slice(0, shown), [filtered, shown])
 
@@ -1358,7 +1378,10 @@ window.__ModuleLoader__.load({
                 }, fill(t('more'), { n: filtered.length - visible.length })))
                 : null)
             : el('div', { className: 'aer-state-block' },
-              el('p', null, tab === 'favorites' ? t('emptyFav') : t('empty')),
+              el('p', null, tab === 'favorites' ? t('emptyFav') : signalOnly ? t('signalEmpty') : t('empty')),
+              tab === 'feed' && signalOnly
+                ? el('button', { type: 'button', className: 'aer-btn', onClick: () => setSignalOnly(false) }, t('all'))
+                : null,
               el('p', { className: 'aer-muted' }, t('emptyHint')))
 
       const body = tab === 'channels'
@@ -1376,6 +1399,7 @@ window.__ModuleLoader__.load({
             tab === 'feed' ? el(Toolbar, {
               t, hours, setHours, langs, setLangs, topic, setTopic, query, setQuery, data,
               unreadOnly, setUnreadOnly, watchOnly, setWatchOnly,
+              signalOnly, setSignalOnly, signalCount,
             }) : null,
             feedState,
             data && data.lastError
@@ -1646,6 +1670,8 @@ window.__ModuleLoader__.load({
   font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .06em; color: var(--ink-3); text-transform: uppercase;
 }
 .aer-lang.lang-zh { border-color: #FF6B35; color: #c2410c; }
+.aer-signal { flex: none; font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; padding: 0 4px; border: 1px solid var(--accent); color: var(--accent); white-space: nowrap; }
+.aer-chip-count { margin-left: 5px; font-family: var(--font-mono); font-size: 9.5px; opacity: .75; }
 .aer-item-title { font-size: 14px; font-weight: 500; line-height: 1.5; color: var(--ink); letter-spacing: -.005em; }
 .aer-item-orig { margin-top: 4px; font-size: 12px; line-height: 1.55; color: var(--ink-3); }
 .aer-pending { flex: none; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .06em; color: var(--warn); border: 1px dashed var(--warn); padding: 0 4px; }

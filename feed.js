@@ -663,6 +663,8 @@ export class RadarFeed {
         snippet: raw.snippet || '',
         via: raw.via || 'news',
         topics: Array.isArray(raw.topics) ? raw.topics : [],
+        signal: Number(raw.signal) || 0,
+        signalKinds: Array.isArray(raw.signalKinds) ? raw.signalKinds : [],
         addedAt: existing?.addedAt || new Date(now).toISOString(),
       })
     }

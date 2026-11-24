@@ -426,6 +426,53 @@ export function parseFeedItems(xml, feed) {
  * @param {'all'|'news'|'feeds'} [options.mode] 渠道模式，默认 'all'
  * @param {AbortSignal} [options.signal]
  */
+/* ------------------------------------------------------------------ */
+/* 可操作信号：判断这条新闻会不会改变出海动作                          */
+/* ------------------------------------------------------------------ */
+
+const SIGNAL_CN = /(中国|Chinese|China's|китай|китайск|الصين|چین|چینی|Çin|çin|Trung Quốc|จีน|중국|中国製|中国車|中国车|الصينية|chine|chinois|chinesa|chino)/i
+const SIGNAL_BRAND = /(byd|chery|geely|changan|great wall|gwm|haval|jetour|omoda|jaecoo|nio|xpeng|leapmotor|zeekr|dongfeng|faw|saic|maxus|hongqi|lynk|seres|aito|xiaomi|\bmg\b|比亚迪|奇瑞|吉利|长安|长城|蔚来|小鹏|零跑|极氪|东风|一汽|上汽|名爵|捷途|红旗|领克|小米|بی‌وای‌دی|چری|جیلی|شيري|بي واي دي)/i
+const SIGNAL_VEH = /(car|cars|vehicle|vehicles|auto|automobile|automotive|carro|vehículo|coche|voiture|véhicule|veículo|авто|автомоб|машин|سيار|مركب|خودرو|otomobil|araç|taşıt|ô tô|xe hơi|รถยนต์|自動車|자동차)/i
+
+const SIGNAL_RULES = [
+  { kind: '关税', a: /(关税|tariff|tariffs|duty|duties|تعرفه|пошлин|gümrük|vergi|arancel|imposto|ภาษี|thuế|関税|관세|droit de douane)/i, b: /(上调|下调|加征|提高|降低|豁免|调整|削减|翻倍|hike|raised|raise|slashed|slash|impose|imposed|reduce|reduced|double|exempt|تغییر|افزایش|کاهش|повыш|сниж|artır|indir|zam|aument|reduz|引き上げ|引き下げ|인상|인하)/i },
+  { kind: '进口政策', a: /(进口|进口车|import|imports|واردات|импорт|ithalat|importación|importação|nhập khẩu|นำเข้า|輸入|수입)/i, b: /(政策|新规|限制|禁令|配额|许可|收紧|放开|暂停|禁止|ban|banned|restrict|quota|licen|policy|rule|tighten|suspend|prohibit|ممنوع|سهمیه|запрет|квот|yasak|prohibición|cupo|hạn ngạch|規制|금지)/i },
+  { kind: '建厂/KD', a: /(建厂|工厂|组装|装配|散件|投产|产能|合资|代工|plant|factory|assembly|KD\b|CKD|joint venture|localiz|کارخانه|مونتاژ|завод|сборк|fabrika|montaj|planta|fábrica|ensambl|usine|assemblagem)/i, need: 'china' },
+  { kind: '渠道', a: /(经销|代理|分销|授权|门店|售后|dealer|distributor|importer|showroom|retail network|aftersales|after-sales|نمایندگی|дилер|дистрибьютор|distribütör|bayi|concesionario|distribuidor|concessionnaire)/i, b: /(签|合作|开店|设点|招募|授权|扩展|布局|opens|opens up|signs|appoints|partners|partnered|expands|network|launch|成立|build|jointly)/i, need: 'china' },
+  { kind: '物流', a: /(海运|滚装|港口|运价|清关|拥堵|航线|ro-?ro|shipping|freight|container|port congestion|customs clearance|logistics|vessel|بندر|порт|логистик|фрахт|liman|navlun|puerto|flete|port|fret)/i, b: /(出口|进口|export|import|运价|运费|涨价|下跌|延误|拥堵|清关|car carrier|vehicle shipment|装载|航线)/i, need: 'veh' },
+  { kind: '禁售/召回', a: /(禁售|禁止销售|召回|处罚|罚款|侵权|诉讼|法院|banned|ban\b|recall|recalled|fine|penalty|penalized|infringement|lawsuit|court|non-?compliant|فراخوان|ممنوع|جریمه|отзыв|запрет|штраф|geri çağırma|ceza|yasak|retirada|multa|prohibición|rappel|amende|interdiction)/i, need: 'brand' },
+  { kind: '补贴/税收', a: /(补贴|激励|免税|购置税|消费税|退税|减税|incentive|subsidy|rebate|tax break|VAT|SCT|ÖTV|duty-?free|یارانه|معافیت|субсиди|льгот|teşvik|indirim|incentivo|subvención|subvention|exonération)/i, need: 'veh' },
+  { kind: '进出市场', a: /(进入|开售|退出|停止销售|暂停销售|撤出|market entry|enters|exit|withdraw|pulls out|stops selling|suspends? sales|ورود به بازار|خروج از بازار|выход на рынок|уход с рынка|pazara giri|piyasadan çekil|entra al mercado|sale del mercado|entre sur le marché|quitte le marché)/i, need: 'brand' },
+]
+
+const SIGNAL_NOISE = /(评测|试驾|实拍|谍照|渲染图|概念车|拍卖|赛事|赛车|提车|车主|分期付款|首付|优惠价|售价|价格表|review|first drive|road test|test drive|spy shot|teaser|rendering|concept car|auction|motorsport|racing|installment|price list|precio|prix|preço|قیمت|тест-драйв|обзор|inceleme|test sürüşü|prueba|essai)/i
+const SIGNAL_ANECDOTE = /(refuses to leave|test rides|takes a ride|fined user|fines user|cracks down|explosion|tire burst|burst tire|viral|video|anecdote|showroom without|выставила на продажу|продажу машину|تست|انفجار|骑|体验|试乘|段子|搞笑|抽奖)/i
+
+/** 判断一条新闻是否属于「会改变出海动作」的信号，并给出类型标签。 */
+export function classifySignal(item) {
+  const text = `${item.title || ''} ${item.titleZh || ''} ${item.snippet || ''}`
+  const brand = SIGNAL_BRAND.test(text)
+  const china = SIGNAL_CN.test(text)
+  const veh = SIGNAL_VEH.test(text)
+  const noise = SIGNAL_NOISE.test(text)
+  const kinds = []
+  for (const rule of SIGNAL_RULES) {
+    if (!rule.a.test(text)) continue
+    if (rule.b && !rule.b.test(text)) continue
+    // 所有类型都要求「中国/中国品牌」锚点，否则一条普通车辆新闻也会被当成信号
+    if (!(china || brand)) continue
+    if (rule.need === 'china' && !(china || brand)) continue
+    if (rule.need === 'brand' && !brand) continue
+    if (rule.need === 'veh' && !veh) continue
+    if (noise && rule.kind !== '关税' && rule.kind !== '进口政策') continue
+    kinds.push(rule.kind)
+  }
+  if (!kinds.length) return { score: 0, kinds: [] }
+  if (SIGNAL_ANECDOTE.test(text) && !kinds.includes('关税') && !kinds.includes('进口政策')) return { score: 0, kinds: [] }
+  const policy = kinds.includes('关税') || kinds.includes('进口政策')
+  return { score: policy ? 3 : kinds.length >= 2 ? 3 : 2, kinds }
+}
+
 export async function collect(options = {}) {
   const hours = Number.isFinite(options.hours) ? Math.max(0, options.hours) : 72;
   const limit = Number.isFinite(options.limit) ? Math.max(1, Math.min(200, options.limit)) : 40;
@@ -569,8 +616,11 @@ export async function collect(options = {}) {
       (item.via === 'feed' ? 1.5 : 0) +
       (item.publishedAt ? Math.max(0, 2 - (now - item.publishedAt) / (72 * 3600 * 1000)) : 0);
 
+    const signal = classifySignal({ title: item.title, snippet: item.snippet || '' })
     merged.push({
       title: item.title,
+      signal: signal.score,
+      signalKinds: signal.kinds,
       source: item.source,
       lang: item.lang,
       region: item.region || '',
