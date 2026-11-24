@@ -18,7 +18,7 @@ const ROUTE = '/auto-export-radar'
 const TOOL_DESCRIPTION = [
   'Harvest recent news about Chinese vehicles going overseas (exports, overseas plants, KD assembly, tariffs, sales, dealer networks, homologation) from many channels and languages at once.',
   'It queries localized Google News editions for Chinese, English, Japanese, Korean, German, French, Arabic, Spanish, Portuguese, Russian, Thai, Vietnamese, Indonesian and Turkish, plus a curated set of industry RSS feeds, then dedupes and balances the result across languages.',
-  'Every item also carries a Simplified-Chinese title in `titleZh` (auto-translated; empty when translation is unavailable).',
+  'Every item also carries a Simplified-Chinese title in `titleZh` (auto-translated; empty when translation is unavailable), plus `signal` (0-3) and `signalKinds` (关税/进口政策/建厂-KD/渠道/物流/禁售召回/补贴税收/进出市场). Prefer `signal > 0` items when writing a decision-oriented digest; treat the rest as background.',
   'Returns a JSON object with normalized items (title, titleZh, source, lang, region, publishedAt, link, topics) and a per-source health list so a failing channel is visible rather than silent.',
   'It only collects, translates and filters; it does not summarize. Write the digest yourself from the returned items and cite the links.',
 ].join(' ')
@@ -410,8 +410,9 @@ export default {
             const lines = value.items.map((item) => {
               const when = item.publishedAt ? item.publishedAt.slice(0, 16).replace('T', ' ') : '时间未知'
               const topics = item.topics?.length ? ` · ${item.topics.join('/')}` : ''
+              const sig = item.signal > 0 ? ` · 信号:${(item.signalKinds || []).join('/')}` : ''
               const zh = item.titleZh && item.titleZh !== item.title ? `\n  中文：${item.titleZh}` : ''
-              return `- [${item.lang}] ${item.title} — ${item.source} · ${when}${topics}${zh}\n  ${item.link}`
+              return `- [${item.lang}] ${item.title} — ${item.source} · ${when}${topics}${sig}${zh}\n  ${item.link}`
             })
             const failed = value.sources.filter((s) => !s.ok)
             const head = `${value.count} 条 / 窗口 ${value.windowHours}h / 语种 ${value.langs.join(',')} / 命中池 ${value.collected}`
