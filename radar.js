@@ -45,6 +45,13 @@ export const LOCALES = {
  * 同一个语种在多个国家各跑一条（阿语 5、俄语 4、法语 3），因为各国关注的市场不同。
  */
 export const EDITIONS = [
+  { lang: 'ja', hl: 'ja', gl: 'JP', ceid: 'JP:ja', queries: ['中国車', '電気自動車 輸出'] },
+  { lang: 'ko', hl: 'ko', gl: 'KR', ceid: 'KR:ko', queries: ['중국 자동차', '전기차 수출'] },
+  { lang: 'de', hl: 'de', gl: 'DE', ceid: 'DE:de', queries: ['chinesische Autos', 'Elektroauto Export'] },
+  { lang: 'th', hl: 'th', gl: 'TH', ceid: 'TH:th', queries: ['รถยนต์จีน', 'ส่งออกรถยนต์'] },
+  { lang: 'vi', hl: 'vi', gl: 'VN', ceid: 'VN:vi', queries: ['xe Trung Quốc', 'xuất khẩu ô tô'] },
+  { lang: 'id', hl: 'id', gl: 'ID', ceid: 'ID:id', queries: ['mobil China', 'ekspor mobil'] },
+  { lang: 'tr', hl: 'tr', gl: 'TR', ceid: 'TR:tr', queries: ['Çin araçları', 'otomobil ihracatı'] },
   { lang: 'zh', region: '中国', hl: 'zh-CN', gl: 'CN', ceid: 'CN:zh-Hans', queries: ['中国汽车 出口', '中国车企 海外 建厂', '自主品牌 出海 销量'] },
   { lang: 'en', region: 'Global', hl: 'en-US', gl: 'US', ceid: 'US:en', queries: ['Chinese car exports', 'Chinese EV plant overseas'] },
   { lang: 'ar', region: '沙特', hl: 'ar', gl: 'SA', ceid: 'SA:ar', queries: ['السيارات الصينية'] },
@@ -648,8 +655,9 @@ export async function collect(options = {}) {
     }
   }
 
-  // 目标市场：按当地语言与 Google 本地版抓「中国车 / 进口车」
-  for (const job of marketJobs(marketIds)) {
+  // 目标市场排在前面：预算有限时先保证市场覆盖
+  const marketJobsList = marketJobs(marketIds)
+  for (const job of marketJobsList) {
     const sourceName = job.name
     jobs.push({
       kind: 'google',
@@ -660,8 +668,10 @@ export async function collect(options = {}) {
       timeout: timeoutFor(sourceName, latency),
       run: async () => {
         const xml = await fetchText(googleNewsUrl(job.edition, job.query), timeoutFor(sourceName, latency), 2)
-        // 市场任务只借本地版拉取，不把市场名写进 region：否则整版条目都会被误判成该市场
-        return parseGoogleItems(xml, job.lang, job.query)
+        // 市场任务：本地语言条目归到该市场；英文版市场只按标题里的国家名认，避免整版英文新闻被误标
+        const rows = parseGoogleItems(xml, job.lang, job.query)
+        if (job.lang === 'en') return rows
+        return rows.map((it) => ({ ...it, market: job.market }))
       },
     })
   }

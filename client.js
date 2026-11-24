@@ -1232,7 +1232,7 @@ window.__ModuleLoader__.load({
       }, [radar.manualBusy])
 
       const [marketOnly, setMarketOnly] = React.useState(() => {
-        try { return localStorage.getItem('aer.marketOnly') !== '0' } catch { return true }
+        try { return localStorage.getItem('aer.marketOnly') === '1' } catch { return false }
       })
       const [signalOnly, setSignalOnly] = React.useState(() => {
         try { return localStorage.getItem('aer.signalOnly') === '1' } catch { return false }

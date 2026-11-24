@@ -661,6 +661,10 @@ export class RadarFeed {
     const byKey = new Map(this.state.items.map((item) => [item.key, item]))
     // 官方源被删掉/改名后，它以前收的条目也一起清出去（其余来源不动）。
     const officialNames = new Set(this.officialList().map((source) => source.name))
+    // 本轮还在跑的来源名单：已经删掉的源，不再把它的旧条目留在池子里
+    const liveNames = Array.isArray(result.sources) && result.sources.length
+      ? new Set(result.sources.map((row) => row.name))
+      : null
     const now = Date.now()
     for (const raw of result.items || []) {
       const key = linkKey(raw.link)
@@ -692,6 +696,8 @@ export class RadarFeed {
         // 旧规则存进来的家电/数码误判（小米洗衣机之类）在下一轮合并时清出池子。
         if (item.via !== 'social' && looksLikeAppliance(`${item.title} ${item.snippet || ''}`)) return false
         if (item.via === 'official' && !officialNames.has(item.source)) return false
+        // 只清理 RSS 来源的旧条目（Google News 条目的 source 是原媒体名，不在本轮渠道名单里）
+        if (liveNames && item.via === 'feed' && !liveNames.has(item.source)) return false
         return true
       })
       .sort((a, b) => Date.parse(b.publishedAt || b.addedAt) - Date.parse(a.publishedAt || a.addedAt))
