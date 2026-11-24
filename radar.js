@@ -7,12 +7,12 @@ const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 const GOOGLE_NEWS = 'https://news.google.com/rss/search';
-const CONCURRENCY = 12;
-const GOOGLE_CONCURRENCY = 6;
+const CONCURRENCY = 14;
+const GOOGLE_CONCURRENCY = 10;
 const PER_SOURCE_TIMEOUT_MS = 15000;
 const MIN_SOURCE_TIMEOUT_MS = 6000;
-const FEED_BUDGET_MS = 15000;
-const GOOGLE_BUDGET_MS = 11000;
+const FEED_BUDGET_MS = 22000;
+const GOOGLE_BUDGET_MS = 22000;
 
 /** 按历史平均耗时给单源超时：快的站早点放弃，慢的站别一刀切。 */
 function timeoutFor(name, latency) {
@@ -47,11 +47,6 @@ export const LOCALES = {
 export const EDITIONS = [
   { lang: 'zh', region: '中国', hl: 'zh-CN', gl: 'CN', ceid: 'CN:zh-Hans', queries: ['中国汽车 出口', '中国车企 海外 建厂', '自主品牌 出海 销量'] },
   { lang: 'en', region: 'Global', hl: 'en-US', gl: 'US', ceid: 'US:en', queries: ['Chinese car exports', 'Chinese EV plant overseas'] },
-  { lang: 'ja', region: '日本', hl: 'ja', gl: 'JP', ceid: 'JP:ja', queries: ['中国車 輸出', '中国自動車 海外工場'] },
-  { lang: 'ko', region: '韩国', hl: 'ko', gl: 'KR', ceid: 'KR:ko', queries: ['중국 자동차 수출', '중국 전기차 해외 공장'] },
-  { lang: 'de', region: '德国', hl: 'de', gl: 'DE', ceid: 'DE:de', queries: ['chinesische Autos Export', 'China Auto Werk Europa'] },
-
-  // 阿语：沙特 / 阿联酋 / 埃及 / 摩洛哥 / 科威特 分别看
   { lang: 'ar', region: '沙特', hl: 'ar', gl: 'SA', ceid: 'SA:ar', queries: ['السيارات الصينية'] },
   { lang: 'ar', region: '阿联酋', hl: 'ar', gl: 'AE', ceid: 'AE:ar', queries: ['سيارات صينية الإمارات'] },
   { lang: 'ar', region: '埃及', hl: 'ar', gl: 'EG', ceid: 'EG:ar', queries: ['تصدير السيارات الصينية'] },
@@ -75,15 +70,33 @@ export const EDITIONS = [
   { lang: 'es', region: '墨西哥', hl: 'es-419', gl: 'MX', ceid: 'MX:es-419', queries: ['autos chinos exportación'] },
   { lang: 'es', region: '西班牙', hl: 'es', gl: 'ES', ceid: 'ES:es', queries: ['coches chinos España'] },
   { lang: 'es', region: '智利', hl: 'es', gl: 'CL', ceid: 'CL:es', queries: ['autos chinos Chile'] },
-  { lang: 'pt', region: '巴西', hl: 'pt-BR', gl: 'BR', ceid: 'BR:pt-419', queries: ['carros chineses exportação'] },
-  { lang: 'th', region: '泰国', hl: 'th', gl: 'TH', ceid: 'TH:th', queries: ['รถยนต์จีน ส่งออก'] },
-  { lang: 'vi', region: '越南', hl: 'vi', gl: 'VN', ceid: 'VN:vi', queries: ['xe Trung Quốc xuất khẩu'] },
-  { lang: 'id', region: '印尼', hl: 'id', gl: 'ID', ceid: 'ID:id', queries: ['mobil China ekspor'] },
-  { lang: 'tr', region: '土耳其', hl: 'tr', gl: 'TR', ceid: 'TR:tr', queries: ['Çin otomobil ihracat'] },
-];
+  { lang: 'pt', region: '巴西', hl: 'pt-BR', gl: 'BR', ceid: 'BR:pt-419', queries: ['carros chineses exportação'] },];
 
 /** 已实测可用的行业垂类 RSS：补充深度稿与一手信源（Google News 之外的第二层渠道）。 */
 export const FEEDS = [
+  // 目标市场本地媒体（第二批：逐条实测过 RSS）
+  { name: 'The National', url: 'https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml', lang: 'en', region: '阿联酋' },
+  { name: 'Al Ghad', url: 'https://www.alghad.com/rss', lang: 'ar', region: '约旦' },
+  { name: 'Tehran Times', url: 'https://www.tehrantimes.com/rss', lang: 'en', region: '伊朗' },
+  { name: 'Financial Tribune', url: 'https://financialtribune.com/rss.xml', lang: 'en', region: '伊朗' },
+  { name: 'Iraqi News', url: 'https://www.iraqinews.com/feed/', lang: 'en', region: '伊拉克' },
+  { name: 'SANA English', url: 'https://sana.sy/en/?feed=rss2', lang: 'en', region: '叙利亚' },
+  { name: 'Enab Baladi', url: 'https://english.enabbaladi.net/feed/', lang: 'en', region: '叙利亚' },
+  { name: 'Annahar', url: 'https://www.annahar.com/rss', lang: 'ar', region: '黎巴嫩' },
+  { name: 'Times of Oman', url: 'https://timesofoman.com/feed', lang: 'en', region: '阿曼' },
+  { name: 'Gazeta.uz', url: 'https://www.gazeta.uz/ru/rss/', lang: 'ru', region: '乌兹别克斯坦' },
+  { name: 'AKIpress', url: 'https://akipress.com/rss/', lang: 'ru', region: '吉尔吉斯斯坦' },
+  { name: '24.kg', url: 'https://24.kg/rss/', lang: 'ru', region: '吉尔吉斯斯坦' },
+  { name: 'TSA Algérie', url: 'https://www.tsa-algerie.com/feed/', lang: 'fr', region: '阿尔及利亚' },
+  { name: 'Capital Ethiopia', url: 'https://www.capitalethiopia.com/feed/', lang: 'en', region: '埃塞俄比亚' },
+  { name: 'BusinessDay NG', url: 'https://businessday.ng/feed/', lang: 'en', region: '尼日利亚' },
+  { name: 'NK News', url: 'https://www.nknews.org/feed/', lang: 'en', region: '朝鲜' },
+  { name: 'Ikon.mn', url: 'https://ikon.mn/rss', lang: 'mn', region: '蒙古' },
+  { name: 'El Dinero', url: 'https://www.eldinero.com.do/feed/', lang: 'es', region: '多米尼加' },
+  { name: 'El Universo', url: 'https://www.eluniverso.com/arc/outboundfeeds/rss/?outputType=xml', lang: 'es', region: '厄瓜多尔' },
+  { name: 'TalCual', url: 'https://talcualdigital.com/feed/', lang: 'es', region: '委内瑞拉' },
+  { name: 'La Nation', url: 'https://www.lanation.dj/feed', lang: 'fr', region: '吉布提' },
+  { name: 'Tirana Times', url: 'https://www.tiranatimes.com/feed/', lang: 'en', region: '阿尔巴尼亚' },
   // 目标市场本地媒体（按用户市场补充）
   { name: 'Punch Nigeria', url: 'https://punchng.com/feed/', lang: 'en', region: '尼日利亚' },
   { name: 'MyJoyOnline', url: 'https://www.myjoyonline.com/feed/', lang: 'en', region: '加纳' },
@@ -420,7 +433,7 @@ export function parseFeedItems(xml, feed) {
 /* 可操作信号：判断这条新闻会不会改变出海动作                          */
 /* ------------------------------------------------------------------ */
 
-const SIGNAL_CN = /(中国|Chinese|China's|китай|китайск|الصين|چین|چینی|Çin|çin|Trung Quốc|จีน|중국|中国製|中国車|中国车|الصينية|chine|chinois|chinesa|chino)/i
+const SIGNAL_CN = /(中国|Chinese|China's|китай|китайськ|الصين|صيني|صينية|چین|چینی|Çin|çin|Trung Quốc|จีน|중국|中国製|中国車|中国车|chine|chinois|chinesa|chino|chinos|chińsk|kinez|չին|ჩინ|хятад)/i
 const SIGNAL_BRAND = /(byd|chery|geely|changan|great wall|gwm|haval|jetour|omoda|jaecoo|nio|xpeng|leapmotor|zeekr|dongfeng|faw|saic|maxus|hongqi|lynk|seres|aito|xiaomi|\bmg\b|比亚迪|奇瑞|吉利|长安|长城|蔚来|小鹏|零跑|极氪|东风|一汽|上汽|名爵|捷途|红旗|领克|小米|بی‌وای‌دی|چری|جیلی|شيري|بي واي دي)/i
 const SIGNAL_VEH = /(car|cars|vehicle|vehicles|auto|automobile|automotive|carro|vehículo|coche|voiture|véhicule|veículo|авто|автомоб|машин|سيار|مركب|خودرو|otomobil|araç|taşıt|ô tô|xe hơi|รถยนต์|自動車|자동차)/i
 
@@ -527,6 +540,14 @@ export const MARKETS = [
   { id: 've', name: '委内瑞拉', group: '中南美', lang: 'es', gl: 'VE', ceid: 'VE:es', aliases: ['委内瑞拉', 'Venezuela', 'Caracas', '加拉加斯'] },
 ]
 
+const MARKET_LOCAL_NAME = {
+  ae: 'الإمارات', jo: 'الأردن', ir: 'ایران', iq: 'العراق', sy: 'سوريا', lb: 'لبنان', sa: 'السعودية', om: 'عمان',
+  kz: 'Казахстан', uz: 'Узбекистан', kg: 'Кыргызстан', am: 'Հայաստան', ge: 'საქართველო', az: 'Azərbaycan', ru: 'Россия',
+  dz: 'الجزائر', dj: 'Djibouti', et: 'Ethiopia', ma: 'Maroc', ng: 'Nigeria', gh: 'Ghana', ao: 'Angola',
+  pl: 'Polska', al: 'Shqipëria', ua: 'Україна', kp: 'North Korea', mn: 'Монгол',
+  do: 'República Dominicana', cl: 'Chile', pe: 'Perú', ec: 'Ecuador', ve: 'Venezuela',
+}
+
 const MARKET_BY_ID = new Map(MARKETS.map((market) => [market.id, market]))
 
 /** 从标题/摘要里认出属于哪个目标市场；认不出返回空串。 */
@@ -545,7 +566,9 @@ export function marketJobs(marketIds) {
   const jobs = []
   for (const market of MARKETS) {
     if (wanted && !wanted.has(market.id)) continue
-    const queries = (MARKET_QUERIES[market.lang] || MARKET_QUERIES.en).slice(0, 2)
+    const base = (MARKET_QUERIES[market.lang] || MARKET_QUERIES.en)[0]
+    const country = MARKET_LOCAL_NAME[market.id] || market.name
+    const queries = [`${base} ${country}`]
     for (const query of queries) {
       jobs.push({
         kind: 'market',
@@ -697,7 +720,7 @@ export async function collect(options = {}) {
     const normalizedHaystack = normalizeScript(haystack);
     const brandHits = countMatches(haystack, BRAND_TERMS);
     const topicHits = countMatches(haystack, topicTermsFor(item.lang));
-    const isChinaSignal = /china|chinese|中国|중국|китай|chino|chinês|الصين|چین|چینی|จีน|trung quốc|cina|çin/i.test(haystack);
+    const isChinaSignal = /china|chinese|中国|중국|китай|китайськ|chino|chinos|chinês|chinesa|chinois|chine|الصين|صيني|صينية|صينى|چین|چینی|جین|trung quốc|cina|çin|chińsk|kinez|չին|ჩინ|хятад/i.test(normalizedHaystack);
 
     // 必须确实是机动车话题；然后二选一：
     // ① 标题/摘要里出现中国品牌（品牌新闻本身就是有效信号）；

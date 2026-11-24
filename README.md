@@ -1,6 +1,6 @@
 # 中国汽车出海雷达 · DSH 插件
 
-> 左侧栏常驻的出海信息台：按 32 个目标市场、15 个语种采集中国汽车出海信息：26 个 Google News 本地版 + 32 个市场本地查询 + 45 个行业 RSS + 17 个官方信源，标题自动翻成中文，点开条目就能在面板里读正文并一键译成中文。
+> 左侧栏常驻的出海信息台：按 32 个目标市场、15 个语种采集中国汽车出海信息：19 个 Google News 本地版 + 32 个市场本地查询 + 67 个行业与本市场地 RSS + 17 个官方信源，标题自动翻成中文，点开条目就能在面板里读正文并一键译成中文。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1%2B-4B6CF7)](https://github.com/deepseek-ai/deepseek-harness)
@@ -156,6 +156,47 @@ cd dsh-auto-export-radar && npm pack
 
 - **波斯语**：Google News 的波斯语索引很弱（实测一次只回个位数条目），伊朗本地 RSS 才是主力，所以给了 18 个源（汽车垂类 2 个 + 科技 3 个 + 财经 2 个 + 通讯社 11 个）；伊朗媒体关于中国车的日更量本身不大，一天 10–30 条属正常。
 - **俄语**：重点不止俄罗斯——哈萨克斯坦、乌兹别克斯坦、白俄罗斯的本地报道经常比俄本土更早披露建厂与 KD 项目，所以这四个市场分开跑。
+
+## 目标市场的本地源（逐条实测 RSS）
+
+每个市场至少一个本地媒体，缺口的用市场本地查询或官方入口兜底：
+
+| 市场 | 本地源 |
+|---|---|
+| 阿联酋 | The National |
+| 约旦 | Al Ghad |
+| 伊朗 | Tehran Times、Financial Tribune（另有 Pedal/Zoomit 等 18 个波斯语源） |
+| 伊拉克 | Iraqi News |
+| 叙利亚 | SANA English、Enab Baladi |
+| 黎巴嫩 | Annahar |
+| 沙特 | Arab News |
+| 阿曼 | Times of Oman |
+| 哈萨克斯坦 | 无可用 RSS（Kazinform 403），靠市场查询 + 国家收入委员会入口 |
+| 乌兹别克斯坦 | Gazeta.uz |
+| 吉尔吉斯斯坦 | AKIpress、24.kg |
+| 亚美尼亚 | 无可用 RSS（Armenpress/Arka 403），靠市场查询 |
+| 格鲁吉亚 | Civil Georgia |
+| 阿塞拜疆 | Trend AZ |
+| 俄罗斯 | Kolesa、5 колесо、Лента、Ведомости |
+| 阿尔及利亚 | TSA Algérie |
+| 吉布提 | La Nation |
+| 埃塞俄比亚 | Capital Ethiopia |
+| 摩洛哥 | 无可用 RSS，靠官方入口 + 市场查询 |
+| 尼日利亚 | Punch、BusinessDay |
+| 加纳 | MyJoyOnline |
+| 安哥拉 | 无可用 RSS（ANGOP 503），靠市场查询 |
+| 波兰 | Notes from Poland |
+| 阿尔巴尼亚 | Tirana Times |
+| 乌克兰 | Kyiv Post |
+| 朝鲜 | NK News |
+| 蒙古 | Ikon.mn |
+| 多米尼加 | El Dinero |
+| 智利 | 无可用 RSS（Emol/BioBio 404），靠市场查询 |
+| 秘鲁 | RPP |
+| 厄瓜多尔 | El Universo |
+| 委内瑞拉 | TalCual |
+
+5 个市场（哈萨克斯坦、亚美尼亚、摩洛哥、安哥拉、智利）公开 RSS 全部 403/404/503，暂以本地语言查询 + 官方入口覆盖；有可用镜像或付费源时再补。
 
 ## 官方信源（17 个）
 
