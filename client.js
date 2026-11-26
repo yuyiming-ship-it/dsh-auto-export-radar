@@ -632,7 +632,7 @@ window.__ModuleLoader__.load({
       }, icon(name, 15))
     }
 
-    function Header({ t, tabs, data, auto, setAuto, onRefresh, busy, manualBusy, elapsed }) {
+    function Header({ t, tabs, data, auto, setAuto, onRefresh, busy, manualBusy, elapsed, untranslatedCount }) {
       const updated = data?.generatedAt ? clock(data.generatedAt) : null
       const next = data?.nextRefreshAt ? clock(data.nextRefreshAt) : null
       return el('header', { className: 'aer-head' },
@@ -660,8 +660,8 @@ window.__ModuleLoader__.load({
           auto && next ? el('span', null, fill(t('next'), { time: next })) : null,
           data?.lastRefreshMs ? el('span', { className: 'aer-sep' }, '·') : null,
           data?.lastRefreshMs ? el('span', null, fill(t('lastTake'), { s: (data.lastRefreshMs / 1000).toFixed(1) })) : null,
-          untranslatedCount ? el('span', { className: 'is-warn' }, fill(t('pendingTranslate'), { n: untranslatedCount })) : null,
-          untranslatedCount ? el('span', { className: 'aer-sep' }, '·') : null,
+          Number(untranslatedCount) > 0 ? el('span', { className: 'is-warn' }, fill(t('pendingTranslate'), { n: untranslatedCount })) : null,
+          Number(untranslatedCount) > 0 ? el('span', { className: 'aer-sep' }, '·') : null,
           data ? el('span', { className: 'aer-sep' }, '·') : null,
           data ? el('span', null, fill(t('pool'), { n: data.poolSize })) : null,
           data ? el('span', { className: 'aer-sep' }, '·') : null,
@@ -1474,6 +1474,7 @@ window.__ModuleLoader__.load({
           busy,
           manualBusy: radar.manualBusy,
           elapsed,
+          untranslatedCount,
         }),
         el('div', { className: `aer-body ${showReader ? 'has-reader' : ''}` },
           body,
